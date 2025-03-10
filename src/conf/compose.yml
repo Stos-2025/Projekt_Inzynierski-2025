@@ -1,0 +1,32 @@
+services:
+  # master:
+  #   image: //todo
+  #   volumes:
+  #     - master_volume:/data:rw
+  worker:
+    image: worker
+    ports:
+      - "8081:80"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:rw
+      - worker_volume:/data:rw
+    environment:
+      - WORKER_ID=0
+      - MASTER_URL=http://master:8080
+      # - TASKS_DIR=/data/tasks
+      # - SUBMISSIONS_DIR=/data/submissions
+      # - RESULTS_DIR=/data/results
+      # - WORKER_DIR=/data/worker
+      - WORKER_PORT=80
+      - WORKER_HOST=worker
+
+  master:
+    image: master
+    ports:
+      - "8080:80"
+
+volumes:
+  tasks_volume:
+  worker_volume:
+
+#docker compose -f src/conf/compose.yml up

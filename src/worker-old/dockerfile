@@ -1,0 +1,20 @@
+FROM alpine:3.20
+
+WORKDIR /app
+
+COPY worker.py .
+
+RUN apk add --no-cache python3 py3-docker-py
+#RUN pip install docker
+
+RUN mkdir -p "/data/comp-in" 
+RUN mkdir -p "/data/comp-out"
+
+RUN mkdir -p "/data/exec-in"
+RUN mkdir -p "/data/exec-out" 
+
+ENV WORKER_SHARED_VOLUME "" 
+
+ENTRYPOINT [ "python3", "-u", "worker.py" ]
+
+#docker build -t worker ./src/worker

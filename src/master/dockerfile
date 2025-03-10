@@ -1,0 +1,14 @@
+FROM docker:dind
+
+RUN apk add --no-cache python3
+RUN addgroup -S mastergroup
+RUN adduser -S masteruser -G mastergroup
+
+WORKDIR /app
+COPY master.py .
+
+ENV WORKER_ID=0
+
+ENTRYPOINT ["python3", "-u", "master.py"]
+
+#docker build -t master ./src/master

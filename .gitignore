@@ -1,0 +1,7 @@
+*.out
+*.in
+*.stderr.txt
+*.resource.json
+*.exec.json
+*.judge.json
+*.pyc
