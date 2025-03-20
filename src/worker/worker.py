@@ -1,29 +1,36 @@
 import os
-import subprocess
 import json
-import time
-from fastapi import FastAPI, File, UploadFile
+import subprocess
 from typing import Tuple
 
-app = FastAPI()
+from fastapi import FastAPI, File, UploadFile, BackgroundTasks
+# from fastapi.responses import Response, FileResponse
 
+worker_app = FastAPI()
+busy = False
 
-@app.post("/submit/{task_id}")
-async def upload_files(task_id: int, files: list[UploadFile] = File(...)):
+@worker_app.post("/submit/{task_id}")
+async def submit(background_tasks: BackgroundTasks, task_id: int, files: list[UploadFile] = File(...)):
     # todo: logs
-    #print("init volume")
-    init_volume()
+    global busy
+    if busy:
+        return {"message": "busy"}
+    busy = True
 
+
+    init_volume()
     for file in files:
         file_location = f"/data/src/{file.filename}"
         with open(file_location, "wb") as f:
             content = await file.read()
             f.write(content)
     
-    # print("run") 
-    points = run(task_id)
 
-    return {"points": points, "filenames": [file.filename for file in files], "locations": [f"/data/src/{file.filename}" for file in files]}
+    background_tasks.add_task(run, task_id)
+    return {"message": "ok", "task_id": task_id}    
+    
+    # file_path = "/data/out/comp.txt"
+    # return FileResponse(file_path, media_type="application/octet-stream", filename="comp_info.txt")
 
 
 def print_resoults(path: str) -> Tuple[int, str]:
@@ -135,5 +142,7 @@ def run(task_id: int) -> int:
     subprocess.run(judge_command)
 
     points, results = print_resoults("/data/out")
-    print(results)
+    print(results, flush=True)
+    global busy
+    busy = False
     return points

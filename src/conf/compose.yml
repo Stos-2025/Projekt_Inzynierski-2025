@@ -18,8 +18,11 @@ services:
       # - RESULTS_DIR=/data/results
       # - WORKER_DIR=/data/worker
       - WORKER_PORT=80
-      - WORKER_HOST=worker
-
+  
+  # mock:
+  #   image: mock
+  #   ports:
+  #     - "8000:2137"
   master:
     image: master
     ports:

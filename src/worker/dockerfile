@@ -12,8 +12,7 @@ COPY worker.py .
 ENV WORKER_ID=0
 EXPOSE 80
 
-# ENTRYPOINT ["python3", "-u", "worker.py"]
-ENTRYPOINT ["uvicorn", "worker:app", "--host", "0.0.0.0", "--port", "80"]
+ENTRYPOINT ["uvicorn", "worker:worker_app", "--host", "0.0.0.0", "--port", "80"]
 
 
 #docker build -t worker ./src/worker
