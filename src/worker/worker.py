@@ -1,5 +1,6 @@
 import os
 import json
+import requests
 import subprocess
 from typing import Tuple
 
@@ -9,8 +10,9 @@ from fastapi import FastAPI, File, UploadFile, BackgroundTasks
 worker_app = FastAPI()
 busy = False
 
-@worker_app.post("/submit/{task_id}")
-async def submit(background_tasks: BackgroundTasks, task_id: int, files: list[UploadFile] = File(...)):
+#todo: change name and url
+@worker_app.post("/submit")
+async def submit(background_tasks: BackgroundTasks, submission_id: int, task_id: int, files: list[UploadFile] = File(...)):
     # todo: logs
     global busy
     if busy:
@@ -23,14 +25,11 @@ async def submit(background_tasks: BackgroundTasks, task_id: int, files: list[Up
         file_location = f"/data/src/{file.filename}"
         with open(file_location, "wb") as f:
             content = await file.read()
-            f.write(content)
+            f.write(content) #todo: change read()
     
 
-    background_tasks.add_task(run, task_id)
+    background_tasks.add_task(run, submission_id, task_id)
     return {"message": "ok", "task_id": task_id}    
-    
-    # file_path = "/data/out/comp.txt"
-    # return FileResponse(file_path, media_type="application/octet-stream", filename="comp_info.txt")
 
 
 def print_resoults(path: str) -> Tuple[int, str]:
@@ -76,7 +75,7 @@ def init_volume():
     os.chmod("/data/std", 0o777)
     os.chmod("/data/out", 0o777)
 
-def run(task_id: int) -> int:
+def run(submission_id: int, task_id: int) -> int:
     worker_volume=r"conf_worker_volume"
     tasks_volume=r"conf_tasks_volume"
     logs="off"
@@ -145,4 +144,22 @@ def run(task_id: int) -> int:
     print(results, flush=True)
     global busy
     busy = False
+
+    master_url = os.getenv("MASTER_URL")
+    
+    files = []
+    
+    file_name = "comp.txt"
+    file_path = "/data/out/comp.txt"
+
+    with open(file_path, 'rb') as file:
+        files.append(('files', (file_name, file, 'application/octet-stream')))
+    
+        try:
+            response = requests.post(f"{master_url}/submit_result", params={"submission_id": submission_id}, files=files)
+            if response.status_code != 200:
+                print(f"Failed to send results to master: {response.status_code}", flush=True)
+        except Exception as e:
+            print(f"Error sending results to master: {e}", flush=True)
+    
     return points

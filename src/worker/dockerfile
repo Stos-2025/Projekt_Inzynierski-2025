@@ -1,7 +1,7 @@
 FROM docker:dind
 
 RUN apk add --no-cache python3 py3-pip
-RUN pip install --break-system-packages fastapi uvicorn python-multipart
+RUN pip install --break-system-packages fastapi uvicorn python-multipart requests
 
 RUN addgroup -S workergroup
 RUN adduser -S workeruser -G workergroup
@@ -10,6 +10,8 @@ WORKDIR /app
 COPY worker.py .
 
 ENV WORKER_ID=0
+ENV MASTER_URL="http://master:80"
+
 EXPOSE 80
 
 ENTRYPOINT ["uvicorn", "worker:worker_app", "--host", "0.0.0.0", "--port", "80"]

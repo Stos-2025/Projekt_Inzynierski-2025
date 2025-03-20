@@ -12,12 +12,12 @@ services:
       - worker_volume:/data:rw
     environment:
       - WORKER_ID=0
-      - MASTER_URL=http://master:8080
+      - MASTER_URL=http://master:80
       # - TASKS_DIR=/data/tasks
       # - SUBMISSIONS_DIR=/data/submissions
       # - RESULTS_DIR=/data/results
       # - WORKER_DIR=/data/worker
-      - WORKER_PORT=80
+      # - WORKER_PORT=80
   
   # mock:
   #   image: mock
