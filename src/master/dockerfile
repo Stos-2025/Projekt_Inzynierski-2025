@@ -8,8 +8,9 @@ RUN adduser -S masteruser -G mastergroup
 
 WORKDIR /app
 COPY master.py .
+COPY master-controller.py .
 COPY submission.py .
 
-ENTRYPOINT ["uvicorn", "master:app", "--host", "0.0.0.0", "--port", "80"]
+ENTRYPOINT ["uvicorn", "master-controller:master_app", "--host", "0.0.0.0", "--port", "80"]
 
 #docker build -t master ./src/master
