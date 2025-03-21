@@ -4,29 +4,18 @@ import requests
 import subprocess
 from typing import Tuple
 
-from fastapi import FastAPI, File, UploadFile, BackgroundTasks
+from fastapi import FastAPI, File, HTTPException, UploadFile, BackgroundTasks
 # from fastapi.responses import Response, FileResponse
 
 worker_app = FastAPI()
-busy = False
+is_working = False
 
-#todo: change name and url
 @worker_app.post("/submit")
-async def submit(background_tasks: BackgroundTasks, submission_id: int, task_id: int, files: list[UploadFile] = File(...)):
-    # todo: logs
-    global busy
-    if busy:
-        return {"message": "busy"}
-    busy = True
-
-
-    init_volume()
-    for file in files:
-        file_location = f"/data/src/{file.filename}"
-        with open(file_location, "wb") as f:
-            content = await file.read()
-            f.write(content) #todo: change read()
-    
+async def submit(background_tasks: BackgroundTasks, submission_id: str, task_id: str):
+    global is_working
+    if is_working:
+        raise HTTPException(status_code=400, detail="Worker is busy")
+    is_working = True
 
     background_tasks.add_task(run, submission_id, task_id)
     return {"message": "ok", "task_id": task_id}    
@@ -61,26 +50,23 @@ def print_resoults(path: str) -> Tuple[int, str]:
     return points, ret
 
 def init_volume():
-    #todo: initialize volumes
-    #remove all files from worker volume
     os.system(f"rm -rf /data/*")
-    #mkdir src bin std out
-    os.mkdir("/data/src")
     os.mkdir("/data/prg")
     os.mkdir("/data/std")
     os.mkdir("/data/out")
-    #chmod 777
-    os.chmod("/data/src", 0o777)
     os.chmod("/data/prg", 0o777)
     os.chmod("/data/std", 0o777)
     os.chmod("/data/out", 0o777)
 
-def run(submission_id: int, task_id: int) -> int:
-    worker_volume=r"conf_worker_volume"
-    tasks_volume=r"conf_tasks_volume"
-    logs="off"
+def run(submission_id: str, task_id: str) -> int:
+    worker_volume=os.getenv("WORKER_VOLUME")
+    tasks_volume=os.getenv("TASKS_VOLUME")
+    submissions_volume=os.getenv("SUBMISSIONS_VOLUME")
     
-    # print("compilation")
+
+    init_volume()
+
+
     compile_command = [
         'docker', 'run',
         '--rm',
@@ -88,12 +74,11 @@ def run(submission_id: int, task_id: int) -> int:
         '--ulimit', 'cpu=30:30',
         '--network', 'none',
         '--security-opt', 'no-new-privileges',
-        '-e', f'SRC=/data/src',
+        '-e', f'SRC=/submissions/{submission_id}/src',
         '-e', 'OUT=/data/out',
         '-e', 'BIN=/data/prg',
         '-v', f'{worker_volume}:/data:rw',
-        '-v', f'{tasks_volume}:/tasks:ro',
-        # '-v', f'{submissions_volume}:/submissions:ro',
+        '-v', f'{submissions_volume}:/submissions:ro',
         'comp'
     ]
     try:
@@ -101,7 +86,6 @@ def run(submission_id: int, task_id: int) -> int:
     except Exception:
         return
 
-    #print("execution")
     execute_command = [
         'docker', 'run',
         '--rm',
@@ -112,7 +96,7 @@ def run(submission_id: int, task_id: int) -> int:
         '-e', 'OUT=/data/out',
         '-e', 'STD=/data/std',
         '-e', 'BIN=/data/prg',
-        '-e', f'LOGS={logs}',
+        '-e', f'LOGS=off',
         '-v', f'{worker_volume}:/data:rw',
         '-v', f'{tasks_volume}:/tasks:ro',
         'exec'
@@ -122,8 +106,7 @@ def run(submission_id: int, task_id: int) -> int:
     except Exception:
         return
 
-    #todo: new_judge
-    #print("judging")
+
     judge_command = [
         'docker', 'run',
         '--rm',
@@ -133,33 +116,25 @@ def run(submission_id: int, task_id: int) -> int:
         '-e', 'IN=/data/std',
         '-e', 'OUT=/data/out',
         '-e', f'ANS=/tasks/{task_id}/out',
-        '-e', f'LOGS={logs}',
+        '-e', f'LOGS=off',
         '-v', f'{worker_volume}:/data:rw',
         '-v', f'{tasks_volume}:/tasks:ro',
         'judge'
     ]
     subprocess.run(judge_command)
 
-    points, results = print_resoults("/data/out")
-    print(results, flush=True)
-    global busy
-    busy = False
 
-    master_url = os.getenv("MASTER_URL")
-    
-    files = []
-    
-    file_name = "comp.txt"
-    file_path = "/data/out/comp.txt"
+    try:
+        points, results = print_resoults("/data/out")
+        print(results, flush=True)
+    except Exception as e:
+        print(f"Error printing results: {e}", flush=True)
 
-    with open(file_path, 'rb') as file:
-        files.append(('files', (file_name, file, 'application/octet-stream')))
+    # if(os.getenv("PRINT_RESULTS") == "True"):
+    # else:
+        # print(f"points: {points}", flush=True)
     
-        try:
-            response = requests.post(f"{master_url}/submit_result", params={"submission_id": submission_id}, files=files)
-            if response.status_code != 200:
-                print(f"Failed to send results to master: {response.status_code}", flush=True)
-        except Exception as e:
-            print(f"Error sending results to master: {e}", flush=True)
+
     
-    return points
+    global is_working
+    is_working = False

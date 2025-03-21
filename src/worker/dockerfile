@@ -10,7 +10,11 @@ WORKDIR /app
 COPY worker.py .
 
 ENV WORKER_ID=0
+ENV PRINT_RESULTS=False
 ENV MASTER_URL="http://master:80"
+ENV TASKS_VOLUME=conf_tasks_volume
+ENV WORKER_VOLUME=conf_worker_volume
+ENV SUBMISSIONS_VOLUME=conf_submissions_volume
 
 EXPOSE 80
 

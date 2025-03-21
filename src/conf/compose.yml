@@ -1,23 +1,25 @@
 services:
-  # master:
-  #   image: //todo
-  #   volumes:
-  #     - master_volume:/data:rw
   worker:
     image: worker
+    tty: true
     ports:
       - "8081:80"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:rw
       - worker_volume:/data:rw
     environment:
-      - WORKER_ID=0
+      - MASTER_URL=http://master:80      
+      - WORKER_VOLUME=conf_worker_volume
+  
+  worker2:
+    image: worker
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:rw
+      - worker2_volume:/data:rw
+    environment:
       - MASTER_URL=http://master:80
-      # - TASKS_DIR=/data/tasks
-      # - SUBMISSIONS_DIR=/data/submissions
-      # - RESULTS_DIR=/data/results
-      # - WORKER_DIR=/data/worker
-      # - WORKER_PORT=80
+      - WORKER_VOLUME=conf_worker2_volume
+
   
   # mock:
   #   image: mock
@@ -25,11 +27,19 @@ services:
   #     - "8000:2137"
   master:
     image: master
+    tty: true
+    environment:
+      - WORKER_URLS=http://worker:80;http://worker2:80
     ports:
-      - "8080:80"
+      - 8080:80
+    volumes:
+      - master_volume:/data:rw
 
+ 
 volumes:
   tasks_volume:
   worker_volume:
+  worker2_volume:
+  master_volume:
 
 #docker compose -f src/conf/compose.yml up
