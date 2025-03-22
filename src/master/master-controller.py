@@ -12,8 +12,6 @@ async def start_main_loop():
     asyncio.create_task(master.main_loop())
 
 
-
-
 @master_app.post("/worker/report_result")
 async def report_result(submission_id: str, files: list[UploadFile] = File(...)): 
     if not master.has(submission_id):

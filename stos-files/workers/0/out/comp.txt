@@ -1,0 +1,4 @@
+/tmp/src/main.cpp: In function 'int main()':
+/tmp/src/main.cpp:19:9: warning: unused variable 'neverUsed' [-Wunused-variable]
+   19 |     int neverUsed;
+      |         ^~~~~~~~~

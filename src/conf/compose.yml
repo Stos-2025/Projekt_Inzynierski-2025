@@ -1,45 +1,35 @@
 services:
   worker:
     image: worker
-    tty: true
     ports:
       - "8081:80"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:rw
-      - worker_volume:/data:rw
+      - /home/damian/Projekty/Projekt_Inzynierski-2025/stos-files/workers/0:/data:rw
     environment:
+      - WORKER_ID=0
       - MASTER_URL=http://master:80      
-      - WORKER_VOLUME=conf_worker_volume
   
-  worker2:
-    image: worker
+  tasks:
+    image: tasks
+    ports:
+      - "8082:80"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:rw
-      - worker2_volume:/data:rw
-    environment:
-      - MASTER_URL=http://master:80
-      - WORKER_VOLUME=conf_worker2_volume
+      - /home/damian/Projekty/Projekt_Inzynierski-2025/src/conf/dbs:/data/db:rw
+      - /home/damian/Projekty/Projekt_Inzynierski-2025/stos-files/tasks:/data/tasks:rw
 
-  
-  # mock:
-  #   image: mock
-  #   ports:
-  #     - "8000:2137"
   master:
     image: master
     tty: true
     environment:
-      - WORKER_URLS=http://worker:80;http://worker2:80
+      - WORKER_URLS=http://worker:80
     ports:
       - 8080:80
-    volumes:
-      - master_volume:/data:rw
 
- 
-volumes:
-  tasks_volume:
-  worker_volume:
-  worker2_volume:
-  master_volume:
+  # mock:
+  #   image: mock
+  #   ports:
+  #     - "8000:2137"
+
 
 #docker compose -f src/conf/compose.yml up

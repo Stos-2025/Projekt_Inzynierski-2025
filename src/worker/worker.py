@@ -1,14 +1,13 @@
 import os
 import json
-import requests
 import subprocess
 from typing import Tuple
+from fastapi import FastAPI, BackgroundTasks, HTTPException
 
-from fastapi import FastAPI, File, HTTPException, UploadFile, BackgroundTasks
-# from fastapi.responses import Response, FileResponse
 
-worker_app = FastAPI()
-is_working = False
+worker_app: FastAPI = FastAPI()
+is_working: bool = False
+
 
 @worker_app.post("/submit")
 async def submit(background_tasks: BackgroundTasks, submission_id: str, task_id: str):
@@ -17,8 +16,12 @@ async def submit(background_tasks: BackgroundTasks, submission_id: str, task_id:
         raise HTTPException(status_code=400, detail="Worker is busy")
     is_working = True
 
-    background_tasks.add_task(run, submission_id, task_id)
-    return {"message": "ok", "task_id": task_id}    
+    init_data()
+    app_data_path=os.getenv("APP_DATA_FOLDER")
+    submission_path = f"/{app_data_path}/submissions/{submission_id}"
+    task_path = f"/{app_data_path}/tasks/{task_id}"
+    background_tasks.add_task(run, submission_path, task_path)  
+    return {"message": "ok"}    
 
 
 def print_resoults(path: str) -> Tuple[int, str]:
@@ -29,9 +32,10 @@ def print_resoults(path: str) -> Tuple[int, str]:
     points = 0
 
     tests = []
-    for file in os.listdir("/data/out"):
+    for file in os.listdir(path):
         if file.endswith('.judge.json'):
-            tests.append(int(file.split('.')[0]))
+            tests.append(file.split('.')[0])
+
     tests.sort()
     for test in tests:
         with open(f"{path}/{test}.exec.json", "r") as exec_file, open(f"{path}/{test}.judge.json", "r") as judge_file:
@@ -49,23 +53,22 @@ def print_resoults(path: str) -> Tuple[int, str]:
     ret += "+----+------+-----+"
     return points, ret
 
-def init_volume():
+
+def init_data():
     os.system(f"rm -rf /data/*")
-    os.mkdir("/data/prg")
-    os.mkdir("/data/std")
-    os.mkdir("/data/out")
-    os.chmod("/data/prg", 0o777)
-    os.chmod("/data/std", 0o777)
-    os.chmod("/data/out", 0o777)
+    os.mkdir(f"/data/bin")
+    os.mkdir(f"/data/std")
+    os.mkdir(f"/data/out")
+    os.chmod(f"/data/bin", 0o777)
+    os.chmod(f"/data/std", 0o777)
+    os.chmod(f"/data/out", 0o777)
 
-def run(submission_id: str, task_id: str) -> int:
-    worker_volume=os.getenv("WORKER_VOLUME")
-    tasks_volume=os.getenv("TASKS_VOLUME")
-    submissions_volume=os.getenv("SUBMISSIONS_VOLUME")
-    
 
-    init_volume()
-
+def run(submission_path: str, task_path: str):
+    src_path=f"{submission_path}/src"
+    task_in_path=f"{task_path}/in"
+    task_out_path=f"{task_path}/out"
+    artifacts_path=os.getenv("WORKER_DATA_FOLDER")
 
     compile_command = [
         'docker', 'run',
@@ -74,67 +77,65 @@ def run(submission_id: str, task_id: str) -> int:
         '--ulimit', 'cpu=30:30',
         '--network', 'none',
         '--security-opt', 'no-new-privileges',
-        '-e', f'SRC=/submissions/{submission_id}/src',
+        '-e', 'SRC=/data/src',
         '-e', 'OUT=/data/out',
-        '-e', 'BIN=/data/prg',
-        '-v', f'{worker_volume}:/data:rw',
-        '-v', f'{submissions_volume}:/submissions:ro',
+        '-e', 'BIN=/data/bin',
+        '-v', f'{src_path}:/data/src:ro',
+        '-v', f'{artifacts_path}/bin:/data/bin:rw',
+        '-v', f'{artifacts_path}/out:/data/out:rw',
         'comp'
     ]
-    try:
-        subprocess.run(compile_command)
-    except Exception:
-        return
-
     execute_command = [
         'docker', 'run',
         '--rm',
         '--ulimit', 'cpu=30:30',
         '--network', 'none',
         '--security-opt', 'no-new-privileges',
-        '-e', f'IN=/tasks/{task_id}/in',
+        '-e', 'LOGS=off',
+        '-e', 'IN=/data/in',
         '-e', 'OUT=/data/out',
         '-e', 'STD=/data/std',
-        '-e', 'BIN=/data/prg',
-        '-e', f'LOGS=off',
-        '-v', f'{worker_volume}:/data:rw',
-        '-v', f'{tasks_volume}:/tasks:ro',
+        '-e', 'BIN=/data/bin',
+        '-v', f'{task_in_path}:/data/in:ro',
+        '-v', f'{artifacts_path}/bin:/data/bin:ro',
+        '-v', f'{artifacts_path}/std:/data/std:rw',
+        '-v', f'{artifacts_path}/out:/data/out:rw',
         'exec'
     ]
-    try:
-        subprocess.run(execute_command)
-    except Exception:
-        return
-
-
     judge_command = [
         'docker', 'run',
         '--rm',
         '--ulimit', 'cpu=30:30',
         '--network', 'none',
         '--security-opt', 'no-new-privileges',
-        '-e', 'IN=/data/std',
+        '-e', 'LOGS=off',
+        '-e', 'IN=/data/in',
         '-e', 'OUT=/data/out',
-        '-e', f'ANS=/tasks/{task_id}/out',
-        '-e', f'LOGS=off',
-        '-v', f'{worker_volume}:/data:rw',
-        '-v', f'{tasks_volume}:/tasks:ro',
+        '-e', 'ANS=/data/ans',
+        '-v', f'{task_out_path}:/data/ans:ro',
+        '-v', f'{artifacts_path}/std:/data/in:ro',
+        '-v', f'{artifacts_path}/out:/data/out:rw',
         'judge'
     ]
+    
+    
+    try:
+        subprocess.run(compile_command)
+    except Exception:
+        return
+    
+    try:
+        subprocess.run(execute_command)
+    except Exception:
+        return
+
     subprocess.run(judge_command)
 
-
     try:
-        points, results = print_resoults("/data/out")
-        print(results, flush=True)
+        points, res = print_resoults(f"/data/out")
+        print(res, flush=True)
     except Exception as e:
-        print(f"Error printing results: {e}", flush=True)
+        print(f"Error while printing results. {e}", flush=True)
 
-    # if(os.getenv("PRINT_RESULTS") == "True"):
-    # else:
-        # print(f"points: {points}", flush=True)
-    
-
-    
     global is_working
     is_working = False

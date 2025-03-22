@@ -1,10 +1,15 @@
 FROM alpine:3.20
 
+RUN apk add --no-cache python3 py3-pip
+RUN pip install --break-system-packages fastapi uvicorn python-multipart sqlalchemy
+
+RUN addgroup -S taskgroup
+RUN adduser -S taskuser -G taskgroup
+
 WORKDIR /app
+COPY task.py .
 
-COPY requirements.txt .
-RUN apk add --no-cache python3 py3-pip && \
-    pip install --upgrade pip && \
-    pip install -r requirements.txt && \
-    rm -rf /var/cache/apk/*
 
+ENTRYPOINT ["uvicorn", "task:app", "--host", "0.0.0.0", "--port", "80"]
+
+#docker build -t tasks ./src/tasks
