@@ -1,0 +1,15 @@
+FROM alpine:3.20
+
+RUN apk add --no-cache python3 py3-pip
+RUN pip install --break-system-packages fastapi uvicorn python-multipart sqlalchemy
+
+RUN addgroup -S submissiongroup
+RUN adduser -S submissionuser -G submissiongroup
+
+WORKDIR /app
+COPY submission.py .
+
+
+ENTRYPOINT ["uvicorn", "submission:app", "--host", "0.0.0.0", "--port", "80"]
+
+#docker build -t submissions ./src/submissions

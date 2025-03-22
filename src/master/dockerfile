@@ -1,7 +1,7 @@
 FROM alpine:3.20
 
 RUN apk add --no-cache python3 py3-pip
-RUN pip install fastapi uvicorn python-multipart
+RUN pip install --break-system-packages fastapi uvicorn python-multipart requests
 
 RUN addgroup -S mastergroup
 RUN adduser -S masteruser -G mastergroup

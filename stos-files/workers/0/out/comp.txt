@@ -1,4 +1,4 @@
-/tmp/src/main.cpp: In function 'int main()':
-/tmp/src/main.cpp:19:9: warning: unused variable 'neverUsed' [-Wunused-variable]
-   19 |     int neverUsed;
-      |         ^~~~~~~~~
+/tmp/src/wsp.cpp: In function 'int main()':
+/tmp/src/wsp.cpp:8:5: warning: unused variable 'z' [-Wunused-variable]
+    8 | int z;
+      |     ^

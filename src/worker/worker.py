@@ -16,19 +16,15 @@ async def submit(background_tasks: BackgroundTasks, submission_id: str, task_id:
         raise HTTPException(status_code=400, detail="Worker is busy")
     is_working = True
 
-    init_data()
-    app_data_path=os.getenv("APP_DATA_FOLDER")
-    submission_path = f"/{app_data_path}/submissions/{submission_id}"
-    task_path = f"/{app_data_path}/tasks/{task_id}"
-    background_tasks.add_task(run, submission_path, task_path)  
+    background_tasks.add_task(run_submission, submission_id, task_id)  
     return {"message": "ok"}    
 
 
 def print_resoults(path: str) -> Tuple[int, str]:
     ret = ""
-    ret += "+----+------+-----+\n"
-    ret += "| nr | time | ret |\n"
-    ret += "+----+------+-----+\n"
+    ret += "+------+------+-----+\n"
+    ret += "| name | time | ret |\n"
+    ret += "+------+------+-----+\n"
     points = 0
 
     tests = []
@@ -47,22 +43,32 @@ def print_resoults(path: str) -> Tuple[int, str]:
                 color = 65
             if exec["return_code"]!=0:
                 color = 173
-            ret += f'|\033[48;5;{color}m\033[38;5;232m {test:>2} | {exec["user_time"]:.2f} | {exec["return_code"]:>3} \033[0m| {judge["info"]}\n'
-    ret += "+----+------+-----+\n"
-    ret += "| "+f"points: {points}".center(15)+" |\n"
-    ret += "+----+------+-----+"
+            ret += f'|\033[48;5;{color}m\033[38;5;232m {test:>4} | {exec["user_time"]:.2f} | {exec["return_code"]:>3} \033[0m| {judge["info"]}\n'
+    ret += "+------+------+-----+\n"
+    ret += "| "+f"points: {points}".center(17)+" |\n"
+    ret += "+------+------+-----+"
     return points, ret
 
 
-def init_data():
+def run_submission(submission_id: str, task_id: str):
+    app_data_path=os.getenv("APP_DATA_FOLDER")
+    submission_path = f"/{app_data_path}/submissions/{submission_id}"
+    task_path = f"/{app_data_path}/tasks/{task_id}"
+    
+    os.umask(0)
     os.system(f"rm -rf /data/*")
     os.mkdir(f"/data/bin")
     os.mkdir(f"/data/std")
     os.mkdir(f"/data/out")
-    os.chmod(f"/data/bin", 0o777)
-    os.chmod(f"/data/std", 0o777)
-    os.chmod(f"/data/out", 0o777)
+    
+    try:
+        run(submission_path, task_path)
+    except Exception as e:
+        print(f"Error while running submission. {e}", flush=True)
 
+    global is_working
+    is_working = False
+    
 
 def run(submission_path: str, task_path: str):
     src_path=f"{submission_path}/src"
@@ -70,10 +76,13 @@ def run(submission_path: str, task_path: str):
     task_out_path=f"{task_path}/out"
     artifacts_path=os.getenv("WORKER_DATA_FOLDER")
 
+    artifacts_bin_path=f"{artifacts_path}/bin"
+    artifacts_std_path=f"{artifacts_path}/std"
+    artifacts_out_path=f"{artifacts_path}/out"
+
     compile_command = [
         'docker', 'run',
         '--rm',
-        '--cpus=1.0',
         '--ulimit', 'cpu=30:30',
         '--network', 'none',
         '--security-opt', 'no-new-privileges',
@@ -81,8 +90,8 @@ def run(submission_path: str, task_path: str):
         '-e', 'OUT=/data/out',
         '-e', 'BIN=/data/bin',
         '-v', f'{src_path}:/data/src:ro',
-        '-v', f'{artifacts_path}/bin:/data/bin:rw',
-        '-v', f'{artifacts_path}/out:/data/out:rw',
+        '-v', f'{artifacts_bin_path}:/data/bin:rw',
+        '-v', f'{artifacts_out_path}:/data/out:rw',
         'comp'
     ]
     execute_command = [
@@ -97,9 +106,9 @@ def run(submission_path: str, task_path: str):
         '-e', 'STD=/data/std',
         '-e', 'BIN=/data/bin',
         '-v', f'{task_in_path}:/data/in:ro',
-        '-v', f'{artifacts_path}/bin:/data/bin:ro',
-        '-v', f'{artifacts_path}/std:/data/std:rw',
-        '-v', f'{artifacts_path}/out:/data/out:rw',
+        '-v', f'{artifacts_bin_path}:/data/bin:ro',
+        '-v', f'{artifacts_std_path}:/data/std:rw',
+        '-v', f'{artifacts_out_path}:/data/out:rw',
         'exec'
     ]
     judge_command = [
@@ -113,8 +122,8 @@ def run(submission_path: str, task_path: str):
         '-e', 'OUT=/data/out',
         '-e', 'ANS=/data/ans',
         '-v', f'{task_out_path}:/data/ans:ro',
-        '-v', f'{artifacts_path}/std:/data/in:ro',
-        '-v', f'{artifacts_path}/out:/data/out:rw',
+        '-v', f'{artifacts_std_path}:/data/in:ro',
+        '-v', f'{artifacts_out_path}:/data/out:rw',
         'judge'
     ]
     
@@ -137,5 +146,4 @@ def run(submission_path: str, task_path: str):
     except Exception as e:
         print(f"Error while printing results. {e}", flush=True)
 
-    global is_working
-    is_working = False
+

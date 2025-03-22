@@ -32,9 +32,18 @@ class Master:
     def run(self, submission_id: str) -> None:
         task_id = self._submissions[submission_id].task_id
         worker_url = self._submissions[submission_id].worker_url
+        files_folder = f"/data/{submission_id}/src"
+        file_handles = []
+        files = []
+    
+        for file_name in os.listdir(files_folder):
+            file_path = os.path.join(files_folder, file_name)
+            file = open(file_path, 'rb')
+            files.append(('files', (file_name, file, 'application/octet-stream')))
+            file_handles.append(file)
 
         try:
-            response = requests.post(f"{worker_url}/submit", params={"submission_id": 0, "task_id": task_id})
+            response = requests.post(f"{worker_url}/submit", params={"submission_id": submission_id, "task_id": task_id}, files=files)
             if response.status_code == 200:
                 self._submissions[submission_id].status = SubmissionStatus.RUNNING
             else:
@@ -42,7 +51,9 @@ class Master:
                 self._submissions[submission_id].status = SubmissionStatus.REJECTED
         except Exception as e:
             print(f"Error sending src to worker: {e}", flush=True)
-
+        finally:
+            for file in file_handles:
+                file.close()
 
 
 

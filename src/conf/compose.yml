@@ -17,6 +17,14 @@ services:
     volumes:
       - /home/damian/Projekty/Projekt_Inzynierski-2025/src/conf/dbs:/data/db:rw
       - /home/damian/Projekty/Projekt_Inzynierski-2025/stos-files/tasks:/data/tasks:rw
+  
+  submissions:
+    image: submissions
+    ports:
+      - "8083:80"
+    volumes:
+      - /home/damian/Projekty/Projekt_Inzynierski-2025/src/conf/dbs:/data/db:rw
+      - /home/damian/Projekty/Projekt_Inzynierski-2025/stos-files/submissions:/data/submissions:rw
 
   master:
     image: master

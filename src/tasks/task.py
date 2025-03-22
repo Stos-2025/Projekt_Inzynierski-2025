@@ -1,5 +1,6 @@
 import os
 import uuid
+import zipfile
 from typing import List
 from fastapi import FastAPI, File, HTTPException, Depends, UploadFile
 from pydantic import BaseModel
@@ -7,7 +8,7 @@ from sqlalchemy import create_engine, Column, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 
-DATABASE_URL = "sqlite:////data/db/test.db"
+DATABASE_URL = "sqlite:////data/db/tasks.db"
 
 Base = declarative_base()
 engine = create_engine(DATABASE_URL)
@@ -33,30 +34,42 @@ def get_db():
     finally:
         db.close()
 
-
-@app.post("/tasks/", response_model=TaskDTO)
-def create_task(db: Session = Depends(get_db), files: list[UploadFile] = File(...)):
-    task_id = str(uuid.uuid4())
+    
+@app.put("/tasks/{task_id}", response_model=TaskDTO)
+def create_task(task_id: str, db: Session = Depends(get_db), task_zipfile: UploadFile = File(...)):
     task_host_path = f"/home/damian/Projekty/Projekt_Inzynierski-2025/stos-files/tasks/{task_id}"
     task_path = f"/data/tasks/{task_id}"
-    
-    os.makedirs(f"{task_path}", exist_ok=True)
-    os.makedirs(f"{task_path}/in", exist_ok=True)
-    os.makedirs(f"{task_path}/out", exist_ok=True)
-    os.chmod(f"{task_path}", 0o777)
-    os.chmod(f"{task_path}/in", 0o777)
-    os.chmod(f"{task_path}/out", 0o777)
-    
-    for file in files:
-        file_path = os.path.join(f"{task_path}/in", file.filename)
-        if file.filename.endswith(".out"):
-            file_path = os.path.join(f"{task_path}/out", file.filename)
-        with open(file_path, "wb") as f:
-            f.write(file.file.read())
-
+    task_in_path = f"{task_path}/in"
+    task_out_path = f"{task_path}/out"
+    task_tmp_path = f"{task_path}/tmp"
+    task_zipfile_path = f"{task_tmp_path}/{task_zipfile.filename}"
     db_task = Task(id=task_id, file_path=task_host_path)
+    
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if task is not None:
+        db.delete(task)
+    
+    os.system(f"rm -rf {task_path}")
+    os.umask(0)
+    os.makedirs(task_path)
+    os.makedirs(task_in_path)
+    os.makedirs(task_out_path)
+    os.makedirs(task_tmp_path)
+    with open(task_zipfile_path, "wb") as f:
+        f.write(task_zipfile.file.read())
+    with zipfile.ZipFile(task_zipfile_path, 'r') as zip_ref:
+        zip_ref.extractall(task_tmp_path)
+    for root, _, files in os.walk(task_tmp_path):
+        for file in files:
+            if file.endswith(".in"):
+                os.rename(os.path.join(root, file), os.path.join(task_in_path, file))
+            elif file.endswith(".out"):
+                os.rename(os.path.join(root, file), os.path.join(task_out_path, file))
+    os.system(f"rm -rf {task_tmp_path}")
+    
     db.add(db_task)
     db.commit()
+    db.refresh(db_task)
     return db_task
 
 
@@ -79,6 +92,7 @@ def delete_task(task_id: str, db: Session = Depends(get_db)):
     db_task = db.query(Task).filter(Task.id == task_id).first()
     if db_task is None:
         raise HTTPException(status_code=404, detail="Task not found")
+    os.system(f"rm -rf /data/tasts/{task_id}")
     db.delete(db_task)
     db.commit()
     return db_task
