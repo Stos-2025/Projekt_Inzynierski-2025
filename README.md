@@ -1,6 +1,6 @@
 # Projekt_Inżynierski-2025
 
-> [!WARNING]
+> [!IMPORTANT]
 > Work is still in progress. Things can change.
 
 
