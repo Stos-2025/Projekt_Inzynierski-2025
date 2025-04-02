@@ -32,7 +32,7 @@ graph LR
   end
 ```
 > [!NOTE]
-> Cache not implemented yet
+> Cache and adapter not implemented yet
 
 ---
 
