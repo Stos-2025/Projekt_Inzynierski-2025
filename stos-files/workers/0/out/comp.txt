@@ -1,4 +1,0 @@
-/tmp/src/wsp.cpp: In function 'int main()':
-/tmp/src/wsp.cpp:8:5: warning: unused variable 'z' [-Wunused-variable]
-    8 | int z;
-      |     ^
