@@ -34,7 +34,7 @@ graph LR
 > [!NOTE]
 > Cache not implemented yet
 
-hr
+---
 
 # Sequence Diagram
 ```mermaid
