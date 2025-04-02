@@ -1,14 +1,27 @@
 services:
   worker:
     image: worker
-    ports:
-      - "8081:80"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:rw
       - /home/damian/Projekty/Projekt_Inzynierski-2025/stos-files/workers/0:/data:rw
+      - /home/damian/Projekty/Projekt_Inzynierski-2025/stos-files/shared:/shared:ro
     environment:
-      - WORKER_ID=0
-      - MASTER_URL=http://master:80      
+      - MASTER_URL=http://master:80     
+
+  worker2:
+    image: worker
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:rw
+      - /home/damian/Projekty/Projekt_Inzynierski-2025/stos-files/workers/2:/data:rw
+      - /home/damian/Projekty/Projekt_Inzynierski-2025/stos-files/shared:/shared:ro
+    environment:
+      - WORKER_DATA_HOST_PATH=/home/damian/Projekty/Projekt_Inzynierski-2025/stos-files/workers/2
+      - MASTER_URL=http://master:80     
+     
   
   tasks:
     image: tasks
@@ -33,11 +46,6 @@ services:
       - WORKER_URLS=http://worker:80
     ports:
       - 8080:80
-
-  # mock:
-  #   image: mock
-  #   ports:
-  #     - "8000:2137"
 
 
 #docker compose -f src/conf/compose.yml up

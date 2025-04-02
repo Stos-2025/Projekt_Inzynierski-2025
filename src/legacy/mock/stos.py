@@ -6,13 +6,16 @@ from random import randint
 from os import environ
 from flask import Flask, jsonify, send_file
 from pathlib import Path
+from flask_restx import Api, Resource
 
 
 app = Flask(__name__)
 
+api = Api(app, version="1.0", title="Mock API", description="API for handling tasks and files")
+ns = api.namespace("api", description="API Endpoints")
 
-@app.route("/tasks", methods=['GET'])
-def tasks():
+@ns.route("/tasks", methods=['GET'])
+def tasks(Resource):
     """
     Endpoint for receiving mocked tasks.
     :return: Task's data in JSON format.
@@ -26,8 +29,8 @@ def tasks():
     return jsonify(randomized_task), 200
 
 
-@app.route("/files/<file_id>", methods=['GET'])
-def files(file_id: str):
+@ns.route("/files/<file_id>", methods=['GET'])
+def files(Resource, file_id: str):
     """
     Return mock taks file
     :param file_id: Id of the file.
@@ -41,8 +44,8 @@ def files(file_id: str):
     return response, 200
 
 
-@app.route("/tasks/<task_id>", methods=['POST'])
-def task(task_id: str):
+@ns.route("/tasks/<task_id>", methods=['POST'])
+def task(Resource, task_id: str):
     """
     Mock endpoint for submitting task result.
     :param task_id: Id of the task.
@@ -50,8 +53,8 @@ def task(task_id: str):
     """
     return jsonify({"result": "uploaded " + str(task_id)}), 200
 
-@app.route("/sync_problem", methods=['GET'])
-def dbFiles():
+@ns.route("/sync_problem", methods=['GET'])
+def dbFiles(Resource):
     """
     Returns files.db zipped file
     """
@@ -60,10 +63,10 @@ def dbFiles():
     with zipfile.ZipFile(zip_filename, 'w') as zipf:
         zipf.write('files.db')
 
-    return send_file(zip_filename, as_attachment=True, mimetype='application/zip')
+    return send_file(zip_filename, as_attachment=True, mimetype='nslication/zip')
 
-@app.route("/sync", methods=['GET'])
-def dbTag():
+@ns.route("/sync", methods=['GET'])
+def dbTag(Resource):
     """
     Returns hash of files.db
     """
@@ -79,5 +82,7 @@ def dbTag():
 
 
 PORT = int(environ.get("STOS_PORT", '2137'))
-HOST = environ.get("STOS_HOST", '127.0.0.1')
-app.run(host=HOST, port=PORT)
+HOST = environ.get("STOS_HOST", '0.0.0.0')
+
+if __name__ == '__main__':
+    app.run(host=HOST, port=PORT,   debug=True)

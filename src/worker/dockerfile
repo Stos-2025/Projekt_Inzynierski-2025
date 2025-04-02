@@ -1,7 +1,7 @@
 FROM docker:dind
 
 RUN apk add --no-cache python3 py3-pip
-RUN pip install --break-system-packages fastapi uvicorn python-multipart requests
+RUN pip install --break-system-packages requests
 
 RUN addgroup -S workergroup
 RUN adduser -S workeruser -G workergroup
@@ -10,13 +10,12 @@ WORKDIR /app
 COPY worker.py .
 
 ENV MASTER_URL=http://master:80
-ENV APP_DATA_FOLDER=/home/damian/Projekty/Projekt_Inzynierski-2025/stos-files
-ENV WORKER_DATA_FOLDER=/home/damian/Projekty/Projekt_Inzynierski-2025/stos-files/workers/0
-ENV WORKER_ID=0
+ENV WORKER_DATA_LOCAL_PATH=/data
+ENV WORKER_DATA_HOST_PATH=/home/damian/Projekty/Projekt_Inzynierski-2025/stos-files/workers/0
 
 EXPOSE 80
 
-ENTRYPOINT ["uvicorn", "worker:worker_app", "--host", "0.0.0.0", "--port", "80"]
+ENTRYPOINT ["python3", "worker.py"]
 
 
 #docker build -t worker ./src/worker

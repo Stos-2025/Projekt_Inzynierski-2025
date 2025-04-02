@@ -1,7 +1,7 @@
 FROM alpine:3.14
 
 RUN apk add --no-cache python3 py3-pip
-RUN pip install flask
+RUN pip install flask flask-restx
 
 WORKDIR /app
 COPY stos.py .

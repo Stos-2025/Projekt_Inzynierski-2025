@@ -1,26 +1,32 @@
 import os
+import io
 import json
+import time
+import signal
+import zipfile
+import requests
 import subprocess
+import urllib.parse
+import urllib.request
 from typing import Tuple
-from fastapi import FastAPI, BackgroundTasks, HTTPException
+
+DATA_LOCAL_PATH = os.getenv("WORKER_DATA_LOCAL_PATH") #todo: us pathlib
+DATA_HOST_PATH = os.getenv("WORKER_DATA_HOST_PATH")
+
+def main() -> None:
+    signal.signal(signal.SIGINT, handle_signal)
+    signal.signal(signal.SIGTERM, handle_signal)
+    while True:
+        should_wait, score = run_submission() 
+        if should_wait:
+            time.sleep(100e-3)
 
 
-worker_app: FastAPI = FastAPI()
-is_working: bool = False
+def handle_signal(signum, frame) -> None:
+    exit(0)
 
-
-@worker_app.post("/submit")
-async def submit(background_tasks: BackgroundTasks, submission_id: str, task_id: str):
-    global is_working
-    if is_working:
-        raise HTTPException(status_code=400, detail="Worker is busy")
-    is_working = True
-
-    background_tasks.add_task(run_submission, submission_id, task_id)  
-    return {"message": "ok"}    
-
-
-def print_resoults(path: str) -> Tuple[int, str]:
+    
+def print_results(path: str) -> Tuple[int, str]:
     ret = ""
     ret += "+------+------+-----+\n"
     ret += "| name | time | ret |\n"
@@ -35,46 +41,101 @@ def print_resoults(path: str) -> Tuple[int, str]:
     tests.sort()
     for test in tests:
         with open(f"{path}/{test}.exec.json", "r") as exec_file, open(f"{path}/{test}.judge.json", "r") as judge_file:
-            exec = json.load(exec_file)
-            judge = json.load(judge_file)
+            execj = json.load(exec_file)
+            judgej = json.load(judge_file)
             color = 131 
-            if judge["grade"]:
+            if judgej["grade"]:
                 points += 1
                 color = 65
-            if exec["return_code"]!=0:
+            if execj["return_code"]!=0:
                 color = 173
-            ret += f'|\033[48;5;{color}m\033[38;5;232m {test:>4} | {exec["user_time"]:.2f} | {exec["return_code"]:>3} \033[0m| {judge["info"]}\n'
+            ret += f'|\033[48;5;{color}m\033[38;5;232m {test:>4} | {execj["user_time"]:.2f} | {execj["return_code"]:>3} \033[0m| {judgej["info"]}\n'
     ret += "+------+------+-----+\n"
     ret += "| "+f"points: {points}".center(17)+" |\n"
     ret += "+------+------+-----+"
     return points, ret
 
 
-def run_submission(submission_id: str, task_id: str):
-    app_data_path=os.getenv("APP_DATA_FOLDER")
-    submission_path = f"/{app_data_path}/submissions/{submission_id}"
-    task_path = f"/{app_data_path}/tasks/{task_id}"
+def fetch_data(url: str, dst_path: str, timeout: int) -> None:
+    print(f"Pobieram plik z URL: {url}")
+    response = urllib.request.urlopen(url, timeout=timeout)
+    zip_data = io.BytesIO(response.read())
+    with zipfile.ZipFile(zip_data, 'r') as zip_ref:
+        zip_ref.extractall(dst_path) 
+
+
+def fetch_submission() -> Tuple[str, str, str]:
+    master_url: str = os.getenv("MASTER_URL")
+    response = requests.get(f"{master_url}/worker/submission")
+    if response.status_code == 404:
+        raise FileNotFoundError("Submission not found")
+    elif response.status_code != 200:
+        raise Exception("Failed to fetch submission")
     
-    os.umask(0)
-    os.system(f"rm -rf /data/*")
-    os.mkdir(f"/data/bin")
-    os.mkdir(f"/data/std")
-    os.mkdir(f"/data/out")
+    submission_id = response.json()["submission_id"]
+    submission_url = response.json()["submission_url"]
+    task_url = response.json()["task_url"]
     
+    return submission_id, submission_url, task_url
+
+
+def report_result(submission_id: str, score: int) -> None:
+    #todo remove sleep
+    time.sleep(100e-3)
+    master_url: str = os.getenv("MASTER_URL")
+    url = f"{master_url}/worker/submissions/{submission_id}/result"
     try:
-        run(submission_path, task_path)
-    except Exception as e:
-        print(f"Error while running submission. {e}", flush=True)
+        requests.put(url, params={"score": score})
+    except requests.exceptions.RequestException:
+        print(f"Error while reporting result", flush=True)
 
-    global is_working
-    is_working = False
+def init() -> None:
+    os.umask(0)
+    os.system(f"rm -rf {DATA_LOCAL_PATH}/*")
+    os.mkdir(f"{DATA_LOCAL_PATH}/bin")
+    os.mkdir(f"{DATA_LOCAL_PATH}/std")
+    os.mkdir(f"{DATA_LOCAL_PATH}/out")
+    os.mkdir(f"{DATA_LOCAL_PATH}/tmp")
+
+def run_submission() -> Tuple[bool, int]:
+    try:
+        submission_id, submission_url, task_url = fetch_submission()
+    except FileNotFoundError:
+        return True, 0
+    except requests.exceptions.RequestException as e:
+        return True, 0
+    except Exception as e:
+        print(f"Error while fetching submission: {e}", flush=True)
+        return True, 0
+    
+    init()
+    task_path = r"tmp/task"
+    task_local_path: str = f"{DATA_LOCAL_PATH}/{task_path}"
+    task_host_path: str = f"{DATA_HOST_PATH}/{task_path}"
+    submission_path = r"tmp/submission"
+    submission_local_path: str = f"{DATA_LOCAL_PATH}/{submission_path}"
+    submission_host_path: str = f"{DATA_HOST_PATH}/{submission_path}"
+
+    try:
+        fetch_data(submission_url, submission_local_path, 10)
+        fetch_data(task_url, task_local_path, 10)
+    except Exception as e:
+        print(f"Error while fetching task and submission data: {e}", flush=True)
+        report_result(submission_id, 0)
+        return True, 0
+
+    print(f"Running submission {submission_id} tp: {task_host_path} sp: {submission_host_path}", flush=True)
+    points = run(submission_host_path, task_host_path)
+    report_result(submission_id, points)
+    return False, points
     
 
-def run(submission_path: str, task_path: str):
+def run(submission_path: str, task_path: str) -> int:
     src_path=f"{submission_path}/src"
+    print(f"src_path: {src_path}", flush=True)
     task_in_path=f"{task_path}/in"
     task_out_path=f"{task_path}/out"
-    artifacts_path=os.getenv("WORKER_DATA_FOLDER")
+    artifacts_path=DATA_HOST_PATH
 
     artifacts_bin_path=f"{artifacts_path}/bin"
     artifacts_std_path=f"{artifacts_path}/std"
@@ -131,19 +192,26 @@ def run(submission_path: str, task_path: str):
     try:
         subprocess.run(compile_command)
     except Exception:
-        return
-    
+        return 0
     try:
         subprocess.run(execute_command)
     except Exception:
-        return
+        return 0
+    try:
+        subprocess.run(judge_command)
+    except Exception:
+        return 0
 
-    subprocess.run(judge_command)
 
     try:
-        points, res = print_resoults(f"/data/out")
+        points, res = print_results(f"/data/out")
         print(res, flush=True)
     except Exception as e:
-        print(f"Error while printing results. {e}", flush=True)
+        print(f"Error while printing results.", flush=True)
+        return 0
+    
+    return points
 
 
+if __name__ == "__main__":
+    main()
