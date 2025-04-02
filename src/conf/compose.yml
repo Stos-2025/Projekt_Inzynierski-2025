@@ -22,23 +22,12 @@ services:
       - WORKER_DATA_HOST_PATH=/home/damian/Projekty/Projekt_Inzynierski-2025/stos-files/workers/2
       - MASTER_URL=http://master:80     
      
-  
-  tasks:
-    image: tasks
-    ports:
-      - "8082:80"
+  results:
+    image: results
     volumes:
-      - /home/damian/Projekty/Projekt_Inzynierski-2025/src/conf/dbs:/data/db:rw
-      - /home/damian/Projekty/Projekt_Inzynierski-2025/stos-files/tasks:/data/tasks:rw
-  
-  submissions:
-    image: submissions
+      - /home/damian/Projekty/Projekt_Inzynierski-2025/stos-files/shared:/data:rw
     ports:
-      - "8083:80"
-    volumes:
-      - /home/damian/Projekty/Projekt_Inzynierski-2025/src/conf/dbs:/data/db:rw
-      - /home/damian/Projekty/Projekt_Inzynierski-2025/stos-files/submissions:/data/submissions:rw
-
+      - 8081:80
   master:
     image: master
     tty: true

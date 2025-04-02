@@ -1,0 +1,15 @@
+FROM alpine:3.20
+
+RUN apk add --no-cache python3 py3-pip
+RUN pip install --break-system-packages fastapi uvicorn python-multipart requests
+
+RUN addgroup -S resultsgroup
+RUN adduser -S resultsuser -G resultsgroup
+
+WORKDIR /app
+COPY results.py .
+
+ENTRYPOINT ["uvicorn", "results:results_app", "--host", "0.0.0.0", "--port", "80"]
+
+#docker build -t results ./src/results
+

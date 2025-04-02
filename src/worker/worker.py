@@ -55,6 +55,71 @@ def print_results(path: str) -> Tuple[int, str]:
     ret += "+------+------+-----+"
     return points, ret
 
+def print_results2(path: str) -> Tuple[int, str]:
+    html_content = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Test Results</title>
+        <style>
+            table { border-collapse: collapse; width: 100%; }
+            th, td { border: 1px solid black; padding: 8px; text-align: center; }
+            th { background-color: #f2f2f2; }
+            .success { background-color: #65c965; }
+            .failure { background-color: #ff8080; }
+            .error { background-color: #ffad5c; }
+        </style>
+    </head>
+    <body>
+        <h1>Test Results</h1>
+        <table>
+            <tr>
+                <th>Name</th>
+                <th>Time</th>
+                <th>Return Code</th>
+                <th>Info</th>
+            </tr>
+    """
+    points = 0
+    tests = []
+    for file in os.listdir(path):
+        if file.endswith('.judge.json'):
+            tests.append(file.split('.')[0])
+
+    tests.sort()
+    for test in tests:
+        with open(f"{path}/{test}.exec.json", "r") as exec_file, open(f"{path}/{test}.judge.json", "r") as judge_file:
+            exec = json.load(exec_file)
+            judge = json.load(judge_file)
+            row_class = "failure"
+            if judge["grade"]:
+                points += 1
+                row_class = "success"
+            if exec["return_code"] != 0:
+                row_class = "error"
+            html_content += f"""
+            <tr class="{row_class}">
+                <td>{test}</td>
+                <td>{exec["user_time"]:.2f}</td>
+                <td>{exec["return_code"]}</td>
+                <td>{judge["info"]}</td>
+            </tr>
+            """
+
+    html_content += f"""
+        </table>
+        <h2>Total Points: {points}</h2>
+    </body>
+    </html>
+    """
+
+    output_file = "/data/tmp/results.html"
+    with open(output_file, "w") as f:
+        f.write(html_content)
+
+    #todo: uploading results
+
+    return points, html_content
 
 def fetch_data(url: str, dst_path: str, timeout: int) -> None:
     print(f"Pobieram plik z URL: {url}")
@@ -204,7 +269,7 @@ def run(submission_path: str, task_path: str) -> int:
 
 
     try:
-        points, res = print_results(f"/data/out")
+        points, res = print_results2(f"/data/out")
         print(res, flush=True)
     except Exception as e:
         print(f"Error while printing results.", flush=True)
