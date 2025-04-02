@@ -7,10 +7,10 @@
 # Containers Graph
 ```mermaid
 graph LR
-  worker1 --> master
-  worker2 --> master
-  worker3 --> master
-  worker4 --> master
+  worker1[worker_1] --> master
+  worker2[worker_2] --> master
+  worker3[worker_...] --> master
+  worker4[worker_n] --> master
 
   worker1 --> helpers
   worker2 --> helpers
