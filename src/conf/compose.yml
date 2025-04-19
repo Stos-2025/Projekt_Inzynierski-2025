@@ -25,12 +25,11 @@ services:
      
   adapter:
     image: adapter
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     volumes:
       - ${STOS_FILES}/shared:/shared:rw
     environment:
       - MASTER_URL=http://master:80
+      - GUI_URL=https://igrzyska.eti.pg.gda.pl
 
   master:
     image: master

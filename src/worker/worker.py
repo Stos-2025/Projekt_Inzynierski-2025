@@ -32,6 +32,7 @@ def print_results(path: str) -> Tuple[int, str]:
     ret += "| name | time | ret |\n"
     ret += "+------+------+-----+\n"
     points = 0
+    tests_count = 0
 
     tests = []
     for file in os.listdir(path):
@@ -40,6 +41,7 @@ def print_results(path: str) -> Tuple[int, str]:
 
     tests.sort()
     for test in tests:
+        tests_count += 1
         with open(f"{path}/{test}.exec.json", "r") as exec_file, open(f"{path}/{test}.judge.json", "r") as judge_file:
             execj = json.load(exec_file)
             judgej = json.load(judge_file)
@@ -53,6 +55,7 @@ def print_results(path: str) -> Tuple[int, str]:
     ret += "+------+------+-----+\n"
     ret += "| "+f"points: {points}".center(17)+" |\n"
     ret += "+------+------+-----+"
+    points = points / tests_count * 100
     return points, ret
 
 # def print_results2(path: str) -> Tuple[int, str]:

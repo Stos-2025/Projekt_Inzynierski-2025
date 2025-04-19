@@ -5,18 +5,12 @@
 using namespace std;
 
 
-void sum(){
-    int n, a, sum = 0;
-    cin >> n;
-    for(int i = 0; i < n; i++) {
-        cin >> a;
-        sum +=a;
-    }
-    cout << sum << endl;
-}
-
 int main() {
-    int neverUsed;
-    sum();
+    int a, b;
+    cin >> a;
+    cin >> b;
+    if (a+b==8)
+    	return 1;
+    cout << a + b << endl;
     return 0;
 }
