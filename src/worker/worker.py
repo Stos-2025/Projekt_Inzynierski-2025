@@ -122,7 +122,7 @@ def print_results(path: str) -> Tuple[int, str]:
 #     return points, html_content
 
 def fetch_data(url: str, dst_path: str, timeout: int) -> None:
-    print(f"Pobieram plik z URL: {url}")
+    print(f"Fetching from URL: {url}")
     response = urllib.request.urlopen(url, timeout=timeout)
     zip_data = io.BytesIO(response.read())
     with zipfile.ZipFile(zip_data, 'r') as zip_ref:
@@ -139,9 +139,9 @@ def fetch_submission() -> Tuple[str, str, str]:
     
     submission_id = response.json()["submission_id"]
     submission_url = response.json()["submission_url"]
-    task_url = response.json()["task_url"]
+    problem_url = response.json()["task_url"]
     
-    return submission_id, submission_url, task_url
+    return submission_id, submission_url, problem_url
 
 
 def report_result(submission_id: str, score: int) -> None:
@@ -164,7 +164,7 @@ def init() -> None:
 
 def run_submission() -> Tuple[bool, int]:
     try:
-        submission_id, submission_url, task_url = fetch_submission()
+        submission_id, submission_url, problem_url = fetch_submission()
     except FileNotFoundError:
         return True, 0
     except requests.exceptions.RequestException as e:
@@ -174,32 +174,32 @@ def run_submission() -> Tuple[bool, int]:
         return True, 0
     
     init()
-    task_path = r"tmp/task"
-    task_local_path: str = f"{DATA_LOCAL_PATH}/{task_path}"
-    task_host_path: str = f"{DATA_HOST_PATH}/{task_path}"
+    problem_path = r"tmp/problem"
+    problem_local_path: str = f"{DATA_LOCAL_PATH}/{problem_path}"
+    problem_host_path: str = f"{DATA_HOST_PATH}/{problem_path}"
     submission_path = r"tmp/submission"
     submission_local_path: str = f"{DATA_LOCAL_PATH}/{submission_path}"
     submission_host_path: str = f"{DATA_HOST_PATH}/{submission_path}"
 
     try:
         fetch_data(submission_url, submission_local_path, 10)
-        fetch_data(task_url, task_local_path, 10)
+        fetch_data(problem_url, problem_local_path, 10)
     except Exception as e:
-        print(f"Error while fetching task and submission data: {e}", flush=True)
+        print(f"Error while fetching problem and submission data: {e}", flush=True)
         report_result(submission_id, 0)
         return True, 0
 
-    print(f"Running submission {submission_id} tp: {task_host_path} sp: {submission_host_path}", flush=True)
-    points = run(submission_host_path, task_host_path)
+    print(f"Running submission {submission_id} tp: {problem_host_path} sp: {submission_host_path}", flush=True)
+    points = run(submission_host_path, problem_host_path)
     report_result(submission_id, points)
     return False, points
     
 
-def run(submission_path: str, task_path: str) -> int:
+def run(submission_path: str, problem_path: str) -> int:
     src_path=f"{submission_path}/src"
     print(f"src_path: {src_path}", flush=True)
-    task_in_path=f"{task_path}/in"
-    task_out_path=f"{task_path}/out"
+    problem_in_path=f"{problem_path}/in"
+    problem_out_path=f"{problem_path}/out"
     artifacts_path=DATA_HOST_PATH
 
     artifacts_bin_path=f"{artifacts_path}/bin"
@@ -231,7 +231,7 @@ def run(submission_path: str, task_path: str) -> int:
         '-e', 'OUT=/data/out',
         '-e', 'STD=/data/std',
         '-e', 'BIN=/data/bin',
-        '-v', f'{task_in_path}:/data/in:ro',
+        '-v', f'{problem_in_path}:/data/in:ro',
         '-v', f'{artifacts_bin_path}:/data/bin:ro',
         '-v', f'{artifacts_std_path}:/data/std:rw',
         '-v', f'{artifacts_out_path}:/data/out:rw',
@@ -247,7 +247,7 @@ def run(submission_path: str, task_path: str) -> int:
         '-e', 'IN=/data/in',
         '-e', 'OUT=/data/out',
         '-e', 'ANS=/data/ans',
-        '-v', f'{task_out_path}:/data/ans:ro',
+        '-v', f'{problem_out_path}:/data/ans:ro',
         '-v', f'{artifacts_std_path}:/data/in:ro',
         '-v', f'{artifacts_out_path}:/data/out:rw',
         'judge'

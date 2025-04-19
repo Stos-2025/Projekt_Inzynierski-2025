@@ -5,9 +5,10 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:rw
-      - /home/damian/Projekty/Projekt_Inzynierski-2025/stos-files/workers/0:/data:rw
-      - /home/damian/Projekty/Projekt_Inzynierski-2025/stos-files/shared:/shared:ro
+      - ${STOS_FILES}/workers/1:/data:rw
+      - ${STOS_FILES}/shared:/shared:ro
     environment:
+      - WORKER_DATA_HOST_PATH=${STOS_FILES}/workers/1
       - MASTER_URL=http://master:80     
 
   worker2:
@@ -16,18 +17,21 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:rw
-      - /home/damian/Projekty/Projekt_Inzynierski-2025/stos-files/workers/2:/data:rw
-      - /home/damian/Projekty/Projekt_Inzynierski-2025/stos-files/shared:/shared:ro
+      - ${STOS_FILES}/workers/2:/data:rw
+      - ${STOS_FILES}/shared:/shared:ro
     environment:
-      - WORKER_DATA_HOST_PATH=/home/damian/Projekty/Projekt_Inzynierski-2025/stos-files/workers/2
+      - WORKER_DATA_HOST_PATH=${STOS_FILES}/workers/2
       - MASTER_URL=http://master:80     
      
-  results:
-    image: results
+  adapter:
+    image: adapter
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
-      - /home/damian/Projekty/Projekt_Inzynierski-2025/stos-files/shared:/data:rw
-    ports:
-      - 8081:80
+      - ${STOS_FILES}/shared:/shared:rw
+    environment:
+      - MASTER_URL=http://master:80
+
   master:
     image: master
     tty: true

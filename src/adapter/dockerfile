@@ -6,9 +6,11 @@ RUN pip install --break-system-packages requests
 RUN addgroup -S stos
 RUN adduser -S stos -G stos
 
+ENV MASTER_URL=http://master:80
+
 WORKDIR /app
 COPY adapter.py .
 
-ENTRYPOINT ["python3", "adapter.py"]
+ENTRYPOINT ["python3", "-u", "adapter.py"]
 
-#docker build -t master ./src/adapter
+#docker build -t adapter ./src/adapter
