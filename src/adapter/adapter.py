@@ -1,10 +1,12 @@
 import io
 import signal
 import time
+from typing import List
 import requests
 import os
 import zipfile
 from uuid import uuid4
+from common import SubmissionResult, TestResult
 
 
 
@@ -21,8 +23,7 @@ def fetch_submission(url: str, submission_directory_path: str, queue="stosvs") -
         print(f"Server ID: {server_id}")
         print(f"Problem ID: {problem_id}")
         
-        # submission_id = str(uuid4())
-        submission_id = server_id #todo: change to uuid4
+        submission_id = f"{str(uuid4())}.{server_id}"
         src_directory_path = f'{submission_directory_path}/{submission_id}'
         os.system(f"mkdir -p {src_directory_path}/tmp/src")
         
@@ -108,7 +109,12 @@ def fetch_problem(url: str, problem_directory_path: str, problem_id: str) -> Non
 
 
 
-def report_result(url: str, server_id: str, score: float) -> None:
+def report_result(url: str, server_id: str, result: SubmissionResult) -> None:
+    if len(result.test_results) == 0:
+        score = 0
+    else:
+        score = 100*result.points / len(result.test_results)
+    print(f"Reported result for submission {server_id} with score {score}")     
     result_content = \
 f"""
 result={score}
@@ -116,24 +122,70 @@ infoformat=html
 debugformat=html
 info=All tests passed
 """
+    
     info_content = \
 f"""
 <style>
-    #my-section {'{'}
+
+    table {{ 
+        border-collapse: collapse; 
+        border: 1px solid #202020;
+        border-radius: 5px; 
+        overflow: hidden;
+    }}
+    th, td {{ 
+        border: 1px solid #202020; padding: 3px 10px; text-align: center; 
+    }}
+    th {{ background-color: #d8d8d8; }}
+    .success {{ background-color: #6fb65d; }}
+    .failure {{ background-color: #b65d62; }}
+    .error {{ background-color: #ffad5c; }}
+
+    .my-section {{ 
         background-color: #f0f0f0;
         padding: 10px;
         border-radius: 5px;
         font-family: Arial, sans-serif;
         border: 1px solid #ccc;
-    {'}'}
+        margin-bottom: 20px;
+    }}
 </style>
-<section id='my-section'>
+<section class='my-section'>
     Execution finished.
     <br>
     <b>Score:</b> {score}
 </section>
 """
-    debug_content = "Compiling...Running...OK"
+    
+    if len(result.test_results) != 0:
+        info_content += \
+f"""
+<b>Tests:</b>
+<br>
+<div style="background-color: #202020; border-radius: 5px; width: fit-content;">
+    <table>
+        <tr>
+            <th>Test Name</th>
+            <th>Return Code</th>
+            <th>Time</th>
+            <th>Info</th>
+        </tr>
+        {''.join(f"<tr class='{'success' if test.grade else 'failure'}'><td>{test.test_name}</td><td>{test.ret_code}</td><td>{test.time:.2f}</td><td>{test.info}</td></tr>" for test in result.test_results)}
+    </table>
+</div>
+<br>
+"""
+        
+    if len(result.info) != 0:
+        info_content += \
+f"""
+    <section class="my-section">{result.info.replace("\n", "<br>")}</section>
+"""
+        
+    debug_content = \
+f"""
+Compiling...Running...OK
+"""
 
     files = {
         'result': ('result.txt', result_content, 'text/plain'),
@@ -177,14 +229,9 @@ def run_submission() -> None:
     # todo: run the submission here
     params = {
         'task_url': f"file:///shared/problems/{problem_id}/tests.zip",
-        'submission_id' : submission_id,
         'submission_url': f"file:///shared/submissions/{submission_id}/src.zip"
     }
-    response = requests.post(f"{os.getenv("MASTER_URL")}/submissions", params=params)
-    print("Response:", response.text)
-    print("All done!")
-
-
+    requests.put(f"{os.getenv('MASTER_URL')}/submissions/{submission_id}", params=params)
 
 
 def handle_signal(signum, frame) -> None:
@@ -197,23 +244,33 @@ def report_completed_submission() -> None:
     if gui_url is None:
         raise ValueError("GUI_URL environment variable is not set")
     repurl = f"{gui_url}/io-result.php"
-    response = requests.delete(f"{os.getenv("MASTER_URL")}/submissions/pop")
 
+    response = requests.get(f"{os.getenv("MASTER_URL")}/submissions/completed")
     if response.status_code == 200:
-        submission_ids = response.json()["submission_ids"]
-        for submission_id, score in submission_ids:
-            print(f"Removed: {submission_id} with score: {score}")
-            server_id = submission_id
+        submission_ids: List[str] = response.json()["submission_ids"]
+    else:
+        return
+
+    for submission_id in submission_ids:
+        response = requests.delete(f"{os.getenv("MASTER_URL")}/submissions/{submission_id}")
+        
+        if response.status_code == 200:
+            result: SubmissionResult = SubmissionResult(**response.json()["result"])
+            # print(response.json())
+            print(f"Removed: {submission_id}")
+            server_id = submission_id.split(".")[1]
             try:
-                report_result(repurl, server_id, score)
+                report_result(repurl, server_id, result)
             except Exception as e:
                 print(f"An error occurred while reporting the result: {e}")
                 return
-            print(f"Reported result for submission {submission_id} with score {score}")
-    elif response.status_code == 404:
-        pass
-    else:
-        print("Error:", response.status_code, response.json())
+            try:
+                os.system(f"rm -rf /shared/submissions/{submission_id}")
+            except Exception as e:
+                print(f"An error occurred while removing the submission: {e}")
+                return
+        else:
+            print("Error:", response.status_code, response.json())
 
     
 

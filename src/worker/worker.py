@@ -8,16 +8,18 @@ import requests
 import subprocess
 import urllib.parse
 import urllib.request
-from typing import Tuple
+from common import SubmissionResult, TestResult
+from typing import Tuple, List, Optional
 
 DATA_LOCAL_PATH = os.getenv("WORKER_DATA_LOCAL_PATH") #todo: us pathlib
 DATA_HOST_PATH = os.getenv("WORKER_DATA_HOST_PATH")
+
 
 def main() -> None:
     signal.signal(signal.SIGINT, handle_signal)
     signal.signal(signal.SIGTERM, handle_signal)
     while True:
-        should_wait, score = run_submission() 
+        should_wait = run_submission() 
         if should_wait:
             time.sleep(100e-3)
 
@@ -25,107 +27,68 @@ def main() -> None:
 def handle_signal(signum, frame) -> None:
     exit(0)
 
-    
-def print_results(path: str) -> Tuple[int, str]:
-    ret = ""
-    ret += "+------+------+-----+\n"
-    ret += "| name | time | ret |\n"
-    ret += "+------+------+-----+\n"
-    points = 0
-    tests_count = 0
+def get_debug(path: str) -> str:
+    INFO_LENGTH = 2000
+    comp_file_path = os.path.join(path, "comp.txt")
+    with open(comp_file_path, "r") as comp_file:
+        content = comp_file.read(INFO_LENGTH)
+        if comp_file.read(1):
+            content += "<br/><br/>..."
+    return content
 
+def get_results(path: str) -> SubmissionResult:
+    submission_result = SubmissionResult()
+    #info
+    
+    submission_result.info = get_debug(path)
+    
+    points = 0
     tests = []
     for file in os.listdir(path):
         if file.endswith('.judge.json'):
             tests.append(file.split('.')[0])
-
+    
     tests.sort()
     for test in tests:
-        tests_count += 1
         with open(f"{path}/{test}.exec.json", "r") as exec_file, open(f"{path}/{test}.judge.json", "r") as judge_file:
-            execj = json.load(exec_file)
-            judgej = json.load(judge_file)
-            color = 131 
-            if judgej["grade"]:
-                points += 1
-                color = 65
-            if execj["return_code"]!=0:
-                color = 173
-            ret += f'|\033[48;5;{color}m\033[38;5;232m {test:>4} | {execj["user_time"]:.2f} | {execj["return_code"]:>3} \033[0m| {judgej["info"]}\n'
+            exec = json.load(exec_file)
+            judge = json.load(judge_file)
+            
+            test_result: TestResult = TestResult()
+            test_result.test_name = test
+            test_result.grade = True if judge["grade"] == 1 else False 
+            test_result.ret_code = exec["return_code"]
+            test_result.time = float(exec["user_time"])
+            test_result.info = judge["info"]
+            submission_result.test_results.append(test_result)
+            
+            if judge["grade"]:
+                points += 1 
+           
+    submission_result.points = points
+    return submission_result
+
+def print_results(submission_result: SubmissionResult) -> str:
+    ret = ""
     ret += "+------+------+-----+\n"
-    ret += "| "+f"points: {points}".center(17)+" |\n"
+    ret += "| name | time | ret |\n"
+    ret += "+------+------+-----+\n"
+    for result in submission_result.test_results:
+        color = 131
+        if result.grade:
+            color = 65
+        if result.ret_code != 0:
+            color = 173
+        ret += f'|\033[48;5;{color}m\033[38;5;232m {result.test_name:>4} | {result.time:.2f} | {result.ret_code:>3} \033[0m| {result.info}\n'
+    ret += "+------+------+-----+\n"
+    ret += "| "+f"points: {submission_result.points}".center(17)+" |\n"
     ret += "+------+------+-----+"
-    points = points / tests_count * 100
-    return points, ret
+    return ret
 
-# def print_results2(path: str) -> Tuple[int, str]:
-#     html_content = """
-#     <!DOCTYPE html>
-#     <html>
-#     <head>
-#         <title>Test Results</title>
-#         <style>
-#             table { border-collapse: collapse; width: 100%; }
-#             th, td { border: 1px solid black; padding: 8px; text-align: center; }
-#             th { background-color: #f2f2f2; }
-#             .success { background-color: #65c965; }
-#             .failure { background-color: #ff8080; }
-#             .error { background-color: #ffad5c; }
-#         </style>
-#     </head>
-#     <body>
-#         <h1>Test Results</h1>
-#         <table>
-#             <tr>
-#                 <th>Name</th>
-#                 <th>Time</th>
-#                 <th>Return Code</th>
-#                 <th>Info</th>
-#             </tr>
-#     """
-#     points = 0
-#     tests = []
-#     for file in os.listdir(path):
-#         if file.endswith('.judge.json'):
-#             tests.append(file.split('.')[0])
-
-#     tests.sort()
-#     for test in tests:
-#         with open(f"{path}/{test}.exec.json", "r") as exec_file, open(f"{path}/{test}.judge.json", "r") as judge_file:
-#             exec = json.load(exec_file)
-#             judge = json.load(judge_file)
-#             row_class = "failure"
-#             if judge["grade"]:
-#                 points += 1
-#                 row_class = "success"
-#             if exec["return_code"] != 0:
-#                 row_class = "error"
-#             html_content += f"""
-#             <tr class="{row_class}">
-#                 <td>{test}</td>
-#                 <td>{exec["user_time"]:.2f}</td>
-#                 <td>{exec["return_code"]}</td>
-#                 <td>{judge["info"]}</td>
-#             </tr>
-#             """
-
-#     html_content += f"""
-#         </table>
-#         <h2>Total Points: {points}</h2>
-#     </body>
-#     </html>
-#     """
-
-#     output_file = "/data/tmp/results.html"
-#     with open(output_file, "w") as f:
-#         f.write(html_content)
-
-#     #todo: uploading results
-
-#     return points, html_content
 
 def fetch_data(url: str, dst_path: str, timeout: int) -> None:
     print(f"Fetching from URL: {url}")
+    print(f"Destination path: {dst_path}")
     response = urllib.request.urlopen(url, timeout=timeout)
     zip_data = io.BytesIO(response.read())
     with zipfile.ZipFile(zip_data, 'r') as zip_ref:
@@ -134,7 +97,7 @@ def fetch_data(url: str, dst_path: str, timeout: int) -> None:
 
 def fetch_submission() -> Tuple[str, str, str]:
     master_url: str = os.getenv("MASTER_URL")
-    response = requests.get(f"{master_url}/worker/submission")
+    response = requests.post(f"{master_url}/worker/submission")
     if response.status_code == 404:
         raise FileNotFoundError("Submission not found")
     elif response.status_code != 200:
@@ -147,13 +110,17 @@ def fetch_submission() -> Tuple[str, str, str]:
     return submission_id, submission_url, problem_url
 
 
-def report_result(submission_id: str, score: int) -> None:
-    #todo remove sleep
-    time.sleep(100e-3)
+def report_result(submission_id: str, result: Optional[SubmissionResult]) -> None:
     master_url: str = os.getenv("MASTER_URL")
     url = f"{master_url}/worker/submissions/{submission_id}/result"
+    if result is None:
+        result = SubmissionResult()
+        try:
+            result.info = get_debug("/data/out")
+        except Exception:
+            result.info = "Error while running submission"
     try:
-        requests.put(url, params={"score": score})
+        requests.put(url, json=result.model_dump())
     except requests.exceptions.RequestException:
         print(f"Error while reporting result", flush=True)
 
@@ -165,16 +132,16 @@ def init() -> None:
     os.mkdir(f"{DATA_LOCAL_PATH}/out")
     os.mkdir(f"{DATA_LOCAL_PATH}/tmp")
 
-def run_submission() -> Tuple[bool, int]:
+def run_submission() -> bool:
     try:
         submission_id, submission_url, problem_url = fetch_submission()
     except FileNotFoundError:
-        return True, 0
+        return True
     except requests.exceptions.RequestException as e:
-        return True, 0
+        return True
     except Exception as e:
         print(f"Error while fetching submission: {e}", flush=True)
-        return True, 0
+        return True
     
     init()
     problem_path = r"tmp/problem"
@@ -190,17 +157,16 @@ def run_submission() -> Tuple[bool, int]:
     except Exception as e:
         print(f"Error while fetching problem and submission data: {e}", flush=True)
         report_result(submission_id, 0)
-        return True, 0
+        return True
 
     print(f"Running submission {submission_id} tp: {problem_host_path} sp: {submission_host_path}", flush=True)
-    points = run(submission_host_path, problem_host_path)
-    report_result(submission_id, points)
-    return False, points
+    result: Optional[SubmissionResult] = run(submission_host_path, problem_host_path)
+    report_result(submission_id, result)
+    return False
     
 
-def run(submission_path: str, problem_path: str) -> int:
+def run(submission_path: str, problem_path: str) -> Optional[SubmissionResult]:
     src_path=f"{submission_path}/src"
-    print(f"src_path: {src_path}", flush=True)
     problem_in_path=f"{problem_path}/in"
     problem_out_path=f"{problem_path}/out"
     artifacts_path=DATA_HOST_PATH
@@ -260,26 +226,30 @@ def run(submission_path: str, problem_path: str) -> int:
     try:
         subprocess.run(compile_command)
     except Exception:
-        return 0
+        return None
     try:
         subprocess.run(execute_command)
     except Exception:
-        return 0
+        return None
     try:
         subprocess.run(judge_command)
     except Exception:
-        return 0
+        return None
 
 
     try:
-        points, res = print_results(f"/data/out")
+        result: SubmissionResult = get_results(f"/data/out")
+    except Exception as e:
+        print(f"Error while getting results: {e}", flush=True)
+        return None
+    
+    try:
+        res = print_results(result)
         print(res, flush=True)
     except Exception as e:
-        print(f"Error while printing results.", flush=True)
-        return 0
+        print(f"Error while printing results: {e}", flush=True)
+    return result
     
-    return points
-
 
 if __name__ == "__main__":
     main()

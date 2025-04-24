@@ -1,4 +1,4 @@
-docker build -t master ./src/master
-docker build -t worker ./src/worker
-docker build -t adapter ./src/adapter
+docker build -f src/master/dockerfile -t master ./src
+docker build -f src/worker/dockerfile -t worker ./src
+docker build -f src/adapter/dockerfile -t adapter ./src
 docker compose -f src/conf/compose.yml up

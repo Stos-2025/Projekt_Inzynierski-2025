@@ -7,9 +7,10 @@ RUN addgroup -S stos
 RUN adduser -S stos -G stos
 
 WORKDIR /app
-COPY master.py .
+COPY master/master.py .
+COPY common/common.py .
 
 USER stos:stos
-ENTRYPOINT ["uvicorn", "master:master_app", "--host", "0.0.0.0", "--port", "80"]
+ENTRYPOINT ["uvicorn", "master:master_app", "--no-access-log", "--host", "0.0.0.0", "--port", "80"]
 
 #docker build -t master ./src/master
