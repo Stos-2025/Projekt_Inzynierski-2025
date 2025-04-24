@@ -3,12 +3,13 @@ FROM alpine:3.20
 RUN apk add --no-cache python3 py3-pip
 RUN pip install --break-system-packages fastapi uvicorn python-multipart requests
 
-RUN addgroup -S mastergroup
-RUN adduser -S masteruser -G mastergroup
+RUN addgroup -S stos
+RUN adduser -S stos -G stos
 
 WORKDIR /app
-COPY master-new.py .
+COPY master.py .
 
-ENTRYPOINT ["uvicorn", "master-new:master_app", "--host", "0.0.0.0", "--port", "80"]
+USER stos:stos
+ENTRYPOINT ["uvicorn", "master:master_app", "--host", "0.0.0.0", "--port", "80"]
 
 #docker build -t master ./src/master

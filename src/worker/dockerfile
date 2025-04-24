@@ -3,18 +3,19 @@ FROM docker:dind
 RUN apk add --no-cache python3 py3-pip
 RUN pip install --break-system-packages requests
 
-RUN addgroup -S workergroup
-RUN adduser -S workeruser -G workergroup
+RUN addgroup -S stos
+RUN adduser -S stos -G stos
 
 WORKDIR /app
 COPY worker.py .
 
 ENV MASTER_URL=http://master:80
-ENV WORKER_DATA_LOCAL_PATH=/data
+ENV WORKER_DATA_LOCAL_PATH=/home/stos
 ENV WORKER_DATA_HOST_PATH=/home/damian/Projekty/Projekt_Inzynierski-2025/stos-files/workers/0
 
 EXPOSE 80
 
+USER stos:stos
 ENTRYPOINT ["python3", "worker.py"]
 
 
