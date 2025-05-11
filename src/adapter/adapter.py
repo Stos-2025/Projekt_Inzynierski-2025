@@ -167,10 +167,11 @@ f"""
         <tr>
             <th>Test Name</th>
             <th>Return Code</th>
-            <th>Time</th>
+            <th>Time [s]</th>
+            <th>maxrss [kB]</th>
             <th>Info</th>
         </tr>
-        {''.join(f"<tr class='{'success' if test.grade else 'failure'}'><td>{test.test_name}</td><td>{test.ret_code}</td><td>{test.time:.2f}</td><td>{test.info}</td></tr>" for test in result.test_results)}
+        {''.join(f"<tr class='{'success' if test.grade else 'failure'}'><td>{test.test_name}</td><td>{test.ret_code}</td><td>{test.time:.2f}</td><td>{test.memory}</td><td>{test.info}</td></tr>" for test in result.test_results)}
     </table>
 </div>
 <br>
