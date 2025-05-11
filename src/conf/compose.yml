@@ -33,6 +33,7 @@ services:
      
   adapter:
     image: adapter
+    restart: always
     volumes:
       - ${STOS_FILES}/shared:/shared:rw
     environment:
@@ -41,6 +42,7 @@ services:
 
   master:
     image: master
+    restart: always
     tty: true
     environment:
       - WORKER_URLS=http://worker:80
