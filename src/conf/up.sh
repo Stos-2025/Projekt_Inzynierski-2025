@@ -1,4 +1,9 @@
-docker build -f src/master/dockerfile -t master ./src
-docker build -f src/worker/dockerfile -t worker ./src
-docker build -f src/adapter/dockerfile -t adapter ./src
-docker compose -f src/conf/compose.yml up
+#!/bin/bash
+
+WORKDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+echo "WORKDIR: $WORKDIR"
+
+docker build -f "$WORKDIR/src/master/dockerfile" -t master "$WORKDIR/src"
+docker build -f "$WORKDIR/src/worker/dockerfile" -t worker "$WORKDIR/src"
+docker build -f "$WORKDIR/src/adapter/dockerfile" -t adapter "$WORKDIR/src"
+docker compose -f "$WORKDIR/src/conf/compose.yml" up
