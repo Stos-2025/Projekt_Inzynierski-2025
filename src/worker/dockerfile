@@ -15,6 +15,10 @@ ENV MASTER_URL=http://master:80
 ENV WORKER_DATA_LOCAL_PATH=/data
 ENV WORKER_DATA_HOST_PATH=/home/damian/Projekty/Projekt_Inzynierski-2025/stos-files/workers/0
 
+ENV COMP_IMAGE_NAME=d4m14n/stos:gpp_comp-latest
+ENV EXEC_IMAGE_NAME=d4m14n/stos:exec-latest
+ENV JUDGE_IMAGE_NAME=d4m14n/stos:judge-latest
+
 EXPOSE 80
 
 # USER stos:stos

@@ -32,7 +32,7 @@ logging.basicConfig(level=logging.INFO)
 @master_app.middleware("http")
 async def selective_access_log(request: Request, call_next):
     response = await call_next(request)
-    if response.status_code == 404 and (request.url.path == "/worker/submission" or request.url.path == "/submissions/completed"):
+    if (response.status_code == 404 and request.url.path == "/worker/submission" or request.url.path == "/submissions/completed"):
         return response
     logger.info(f"{request.method} {request.url.path} - {response.status_code}")
     return response

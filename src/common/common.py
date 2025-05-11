@@ -7,6 +7,7 @@ class TestResult(BaseModel):
     grade: bool = False
     ret_code: int = 0
     time: float = 0
+    memory: float = 0
     info: str = ""
   
 

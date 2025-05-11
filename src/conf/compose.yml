@@ -1,6 +1,7 @@
 services:
   worker:
     image: worker
+    restart: always
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
@@ -9,10 +10,14 @@ services:
       - ${STOS_FILES}/shared:/shared:ro
     environment:
       - WORKER_DATA_HOST_PATH=${STOS_FILES}/workers/1
-      - MASTER_URL=http://master:80     
+      - COMP_IMAGE_NAME=${COMP_IMAGE_NAME}
+      - EXEC_IMAGE_NAME=${EXEC_IMAGE_NAME}
+      - JUDGE_IMAGE_NAME=${JUDGE_IMAGE_NAME}
+      - MASTER_URL=http://master:80
 
   worker2:
     image: worker
+    restart: always
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
@@ -21,6 +26,9 @@ services:
       - ${STOS_FILES}/shared:/shared:ro
     environment:
       - WORKER_DATA_HOST_PATH=${STOS_FILES}/workers/2
+      - COMP_IMAGE_NAME=${COMP_IMAGE_NAME}
+      - EXEC_IMAGE_NAME=${EXEC_IMAGE_NAME}
+      - JUDGE_IMAGE_NAME=${JUDGE_IMAGE_NAME}
       - MASTER_URL=http://master:80     
      
   adapter:

@@ -59,6 +59,7 @@ def get_results(path: str) -> SubmissionResult:
             test_result.grade = True if judge["grade"] == 1 else False 
             test_result.ret_code = exec["return_code"]
             test_result.time = float(exec["user_time"])
+            test_result.memory = float(exec["memory"])
             test_result.info = judge["info"]
             submission_result.test_results.append(test_result)
             
@@ -156,7 +157,6 @@ def run_submission() -> bool:
         fetch_data(problem_url, problem_local_path, 10)
     except Exception as e:
         print(f"Error while fetching problem and submission data: {e}", flush=True)
-        report_result(submission_id, 0)
         return True
 
     print(f"Running submission {submission_id} tp: {problem_host_path} sp: {submission_host_path}", flush=True)
@@ -166,6 +166,10 @@ def run_submission() -> bool:
     
 
 def run(submission_path: str, problem_path: str) -> Optional[SubmissionResult]:
+    exec_image = os.getenv(r"EXEC_IMAGE_NAME") 
+    comp_image = os.getenv(r"COMP_IMAGE_NAME")
+    judge_image = os.getenv(r"JUDGE_IMAGE_NAME")
+
     src_path=f"{submission_path}/src"
     problem_in_path=f"{problem_path}/in"
     problem_out_path=f"{problem_path}/out"
@@ -187,7 +191,7 @@ def run(submission_path: str, problem_path: str) -> Optional[SubmissionResult]:
         '-v', f'{src_path}:/data/src:ro',
         '-v', f'{artifacts_bin_path}:/data/bin:rw',
         '-v', f'{artifacts_out_path}:/data/out:rw',
-        'comp'
+        comp_image
     ]
     execute_command = [
         'docker', 'run',
@@ -204,7 +208,7 @@ def run(submission_path: str, problem_path: str) -> Optional[SubmissionResult]:
         '-v', f'{artifacts_bin_path}:/data/bin:ro',
         '-v', f'{artifacts_std_path}:/data/std:rw',
         '-v', f'{artifacts_out_path}:/data/out:rw',
-        'exec'
+        exec_image
     ]
     judge_command = [
         'docker', 'run',
@@ -219,7 +223,7 @@ def run(submission_path: str, problem_path: str) -> Optional[SubmissionResult]:
         '-v', f'{problem_out_path}:/data/ans:ro',
         '-v', f'{artifacts_std_path}:/data/in:ro',
         '-v', f'{artifacts_out_path}:/data/out:rw',
-        'judge'
+        judge_image
     ]
     
     

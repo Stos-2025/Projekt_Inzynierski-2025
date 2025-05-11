@@ -252,6 +252,8 @@ def report_completed_submission() -> None:
         return
 
     for submission_id in submission_ids:
+        if len(submission_id.split(".")) < 2:
+            continue
         response = requests.delete(f"{os.getenv("MASTER_URL")}/submissions/{submission_id}")
         
         if response.status_code == 200:
