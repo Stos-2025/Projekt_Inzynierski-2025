@@ -6,30 +6,18 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:rw
-      - ${STOS_FILES}/workers/1:/data:rw
       - ${STOS_FILES}/shared:/shared:ro
+      - ${STOS_FILES}/shared/workers:/workers:rw
     environment:
-      - WORKER_DATA_HOST_PATH=${STOS_FILES}/workers/1
+      - WORKERS_DATA_LOCAL_PATH=/workers
+      - WORKERS_DATA_HOST_PATH=${STOS_FILES}/shared/workers
       - COMP_IMAGE_NAME=${COMP_IMAGE_NAME}
       - EXEC_IMAGE_NAME=${EXEC_IMAGE_NAME}
       - JUDGE_IMAGE_NAME=${JUDGE_IMAGE_NAME}
       - MASTER_URL=http://master:80
-
-  worker2:
-    image: worker
-    restart: always
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:rw
-      - ${STOS_FILES}/workers/2:/data:rw
-      - ${STOS_FILES}/shared:/shared:ro
-    environment:
-      - WORKER_DATA_HOST_PATH=${STOS_FILES}/workers/2
-      - COMP_IMAGE_NAME=${COMP_IMAGE_NAME}
-      - EXEC_IMAGE_NAME=${EXEC_IMAGE_NAME}
-      - JUDGE_IMAGE_NAME=${JUDGE_IMAGE_NAME}
-      - MASTER_URL=http://master:80     
+    deploy:
+      mode: replicated
+      replicas: 3
      
   adapter:
     image: adapter

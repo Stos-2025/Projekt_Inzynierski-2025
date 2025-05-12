@@ -11,8 +11,13 @@ import urllib.request
 from common import SubmissionResult, TestResult
 from typing import Tuple, List, Optional
 
-DATA_LOCAL_PATH = os.getenv("WORKER_DATA_LOCAL_PATH") #todo: us pathlib
-DATA_HOST_PATH = os.getenv("WORKER_DATA_HOST_PATH")
+
+MASTER_URL: str = os.getenv("MASTER_URL")
+EXEC_IMAGE: str = os.getenv(r"EXEC_IMAGE_NAME")
+COMP_IMAGE: str = os.getenv(r"COMP_IMAGE_NAME")
+JUDGE_IMAGE: str = os.getenv(r"JUDGE_IMAGE_NAME")
+DATA_LOCAL_PATH = f"{os.getenv("WORKERS_DATA_LOCAL_PATH")}/{os.getenv("HOSTNAME")}"
+DATA_HOST_PATH = f"{os.getenv("WORKERS_DATA_HOST_PATH")}/{os.getenv("HOSTNAME")}"
 
 
 def main() -> None:
@@ -38,10 +43,8 @@ def get_debug(path: str) -> str:
 
 def get_results(path: str) -> SubmissionResult:
     submission_result = SubmissionResult()
-    #info
     
     submission_result.info = get_debug(path)
-    
     points = 0
     tests = []
     for file in os.listdir(path):
@@ -97,8 +100,7 @@ def fetch_data(url: str, dst_path: str, timeout: int) -> None:
 
 
 def fetch_submission() -> Tuple[str, str, str]:
-    master_url: str = os.getenv("MASTER_URL")
-    response = requests.post(f"{master_url}/worker/submission")
+    response = requests.post(f"{MASTER_URL}/worker/submission")
     if response.status_code == 404:
         raise FileNotFoundError("Submission not found")
     elif response.status_code != 200:
@@ -112,12 +114,12 @@ def fetch_submission() -> Tuple[str, str, str]:
 
 
 def report_result(submission_id: str, result: Optional[SubmissionResult]) -> None:
-    master_url: str = os.getenv("MASTER_URL")
-    url = f"{master_url}/worker/submissions/{submission_id}/result"
+    
+    url = f"{MASTER_URL}/worker/submissions/{submission_id}/result"
     if result is None:
         result = SubmissionResult()
         try:
-            result.info = get_debug("/data/out")
+            result.info = get_debug(f"{DATA_LOCAL_PATH}/out")
         except Exception:
             result.info = "Error while running submission"
     try:
@@ -127,6 +129,7 @@ def report_result(submission_id: str, result: Optional[SubmissionResult]) -> Non
 
 def init() -> None:
     os.umask(0)
+    os.system(f"mkdir -p {DATA_LOCAL_PATH}")
     os.system(f"rm -rf {DATA_LOCAL_PATH}/*")
     os.mkdir(f"{DATA_LOCAL_PATH}/bin")
     os.mkdir(f"{DATA_LOCAL_PATH}/std")
@@ -145,12 +148,14 @@ def run_submission() -> bool:
         return True
     
     init()
-    problem_path = r"tmp/problem"
+    os.system("ls /shared")
+    problem_path = r"tmp/tests"
     problem_local_path: str = f"{DATA_LOCAL_PATH}/{problem_path}"
     problem_host_path: str = f"{DATA_HOST_PATH}/{problem_path}"
-    submission_path = r"tmp/submission"
+    submission_path = r"tmp/src"
     submission_local_path: str = f"{DATA_LOCAL_PATH}/{submission_path}"
     submission_host_path: str = f"{DATA_HOST_PATH}/{submission_path}"
+    print(f"{DATA_HOST_PATH}")
 
     try:
         fetch_data(submission_url, submission_local_path, 10)
@@ -166,10 +171,6 @@ def run_submission() -> bool:
     
 
 def run(submission_path: str, problem_path: str) -> Optional[SubmissionResult]:
-    exec_image = os.getenv(r"EXEC_IMAGE_NAME") 
-    comp_image = os.getenv(r"COMP_IMAGE_NAME")
-    judge_image = os.getenv(r"JUDGE_IMAGE_NAME")
-
     src_path=f"{submission_path}/src"
     problem_in_path=f"{problem_path}/in"
     problem_out_path=f"{problem_path}/out"
@@ -191,7 +192,7 @@ def run(submission_path: str, problem_path: str) -> Optional[SubmissionResult]:
         '-v', f'{src_path}:/data/src:ro',
         '-v', f'{artifacts_bin_path}:/data/bin:rw',
         '-v', f'{artifacts_out_path}:/data/out:rw',
-        comp_image
+        COMP_IMAGE
     ]
     execute_command = [
         'docker', 'run',
@@ -208,7 +209,7 @@ def run(submission_path: str, problem_path: str) -> Optional[SubmissionResult]:
         '-v', f'{artifacts_bin_path}:/data/bin:ro',
         '-v', f'{artifacts_std_path}:/data/std:rw',
         '-v', f'{artifacts_out_path}:/data/out:rw',
-        exec_image
+        EXEC_IMAGE
     ]
     judge_command = [
         'docker', 'run',
@@ -223,7 +224,7 @@ def run(submission_path: str, problem_path: str) -> Optional[SubmissionResult]:
         '-v', f'{problem_out_path}:/data/ans:ro',
         '-v', f'{artifacts_std_path}:/data/in:ro',
         '-v', f'{artifacts_out_path}:/data/out:rw',
-        judge_image
+        JUDGE_IMAGE
     ]
     
     
@@ -242,7 +243,7 @@ def run(submission_path: str, problem_path: str) -> Optional[SubmissionResult]:
 
 
     try:
-        result: SubmissionResult = get_results(f"/data/out")
+        result: SubmissionResult = get_results(f"{DATA_LOCAL_PATH}/out")
     except Exception as e:
         print(f"Error while getting results: {e}", flush=True)
         return None
