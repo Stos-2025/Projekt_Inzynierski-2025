@@ -154,7 +154,6 @@ def run_submission() -> bool:
     submission_path = r"tmp/src"
     submission_local_path: str = f"{DATA_LOCAL_PATH}/{submission_path}"
     submission_host_path: str = f"{DATA_HOST_PATH}/{submission_path}"
-    print(f"{DATA_HOST_PATH}")
 
     try:
         fetch_data(submission_url, submission_local_path, 10)
