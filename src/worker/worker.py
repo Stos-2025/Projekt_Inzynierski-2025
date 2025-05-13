@@ -148,7 +148,6 @@ def run_submission() -> bool:
         return True
     
     init()
-    os.system("ls /shared")
     problem_path = r"tmp/tests"
     problem_local_path: str = f"{DATA_LOCAL_PATH}/{problem_path}"
     problem_host_path: str = f"{DATA_HOST_PATH}/{problem_path}"
