@@ -1,0 +1,16 @@
+FROM alpine:3.20
+
+RUN apk add --no-cache python3 py3-pip
+RUN pip install --break-system-packages fastapi uvicorn python-multipart requests
+
+RUN addgroup -S stos
+RUN adduser -S stos -G stos
+
+WORKDIR /app
+COPY master/master.py .
+COPY common/common.py .
+
+USER stos:stos
+ENTRYPOINT ["uvicorn", "master:master_app", "--no-access-log", "--host", "0.0.0.0", "--port", "80"]
+
+#docker build -t master ./src/master

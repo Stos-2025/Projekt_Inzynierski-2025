@@ -1,0 +1,9 @@
+*.out
+*.in
+*.stderr.txt
+*.resource.json
+*.exec.json
+*.judge.json
+*.pyc
+stos-files/
+stos_files/

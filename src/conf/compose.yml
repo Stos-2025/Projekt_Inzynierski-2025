@@ -1,0 +1,41 @@
+services:
+  worker:
+    image: worker
+    restart: always
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:rw
+      - ${STOS_FILES}/shared:/shared:ro
+      - ${STOS_FILES}/shared/workers:/workers:rw
+    environment:
+      - WORKERS_DATA_LOCAL_PATH=/workers
+      - WORKERS_DATA_HOST_PATH=${STOS_FILES}/shared/workers
+      - COMP_IMAGE_NAME=${COMP_IMAGE_NAME}
+      - EXEC_IMAGE_NAME=${EXEC_IMAGE_NAME}
+      - JUDGE_IMAGE_NAME=${JUDGE_IMAGE_NAME}
+      - MASTER_URL=http://master:80
+    deploy:
+      mode: replicated
+      replicas: 3
+     
+  adapter:
+    image: adapter
+    restart: always
+    volumes:
+      - ${STOS_FILES}/shared:/shared:rw
+    environment:
+      - MASTER_URL=http://master:80
+      - GUI_URL=${GUI_URL}
+
+  master:
+    image: master
+    restart: always
+    tty: true
+    environment:
+      - WORKER_URLS=http://worker:80
+    ports:
+      - 8080:80
+
+
+#docker compose -f src/conf/compose.yml up

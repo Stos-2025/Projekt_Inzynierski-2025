@@ -1,0 +1,28 @@
+FROM docker:dind
+
+RUN apk add --no-cache python3 py3-pip
+RUN pip install --break-system-packages requests pydantic
+
+RUN addgroup -S stos
+RUN adduser -S stos -G stos
+# RUN usermod -aG docker stos
+
+WORKDIR /app
+COPY worker/worker.py .
+COPY common/common.py .
+
+ENV MASTER_URL=http://master:80
+ENV WORKERS_DATA_LOCAL_PATH=/workers
+ENV WORKERS_DATA_HOST_PATH=/home/damian/Projekty/Projekt_Inzynierski-2025/stos-files/workers
+
+ENV COMP_IMAGE_NAME=d4m14n/stos:gpp_comp-latest
+ENV EXEC_IMAGE_NAME=d4m14n/stos:exec-latest
+ENV JUDGE_IMAGE_NAME=d4m14n/stos:judge-latest
+
+EXPOSE 80
+
+# USER stos:stos
+ENTRYPOINT ["python3", "worker.py"]
+
+
+#docker build -t worker ./src/worker

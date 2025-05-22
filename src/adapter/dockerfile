@@ -1,0 +1,21 @@
+FROM alpine:3.20
+
+RUN apk add --no-cache python3 py3-pip
+RUN pip install --break-system-packages requests pydantic
+
+RUN addgroup -S stos
+RUN adduser -S stos -G stos
+
+ENV MASTER_URL=http://master:80
+ENV GUI_URL=https://igrzyska.eti.pg.gda.pl
+
+
+WORKDIR /app
+COPY adapter/adapter.py .
+COPY common/common.py .
+
+
+USER stos:stos
+ENTRYPOINT ["python3", "-u", "adapter.py"]
+
+#docker build -t adapter ./src/adapter
