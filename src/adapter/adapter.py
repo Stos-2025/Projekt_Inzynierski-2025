@@ -211,7 +211,7 @@ def run_submission() -> None:
 
     # fetching the submission
     try:
-        problem_id, server_id, submission_id = fetch_submission(qurl, f"{shared_path}/submissions", )
+        problem_id, server_id, submission_id = fetch_submission(qurl, f"{shared_path}/submissions", queue_name)
     except FileNotFoundError:
         return
     except Exception as e:
