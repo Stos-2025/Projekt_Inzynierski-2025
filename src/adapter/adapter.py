@@ -29,9 +29,20 @@ def fetch_submission(url: str, submission_directory_path: str, queue="stosvs") -
         submission_id = f"{str(uuid4())}.{server_id}"
         src_directory_path = f'{submission_directory_path}/{submission_id}'
         os.system(f"mkdir -p {src_directory_path}/tmp/src")
-        
+
+       
         with zipfile.ZipFile(io.BytesIO(content), 'r') as zip_ref:
-            zip_ref.extractall(f"{src_directory_path}/tmp/src")
+            file_list = zip_ref.infolist()
+            if file_list:
+                filename = file_list[0].filename
+                print(f"First file name: {filename}")
+                with open(f"{src_directory_path}/tmp/src/__MAIN__{filename}", 'wb') as out_file:
+                    out_file.write(zip_ref.read(filename))
+            for info in file_list[1:]:
+                zip_ref.extract(info, f"{src_directory_path}/tmp/src/{info.filename}") 
+
+        # with zipfile.ZipFile(io.BytesIO(content), 'r') as zip_ref:
+        #     zip_ref.extractall(f"{src_directory_path}/tmp/src")
         
         with zipfile.ZipFile(f"{src_directory_path}/src.zip", 'w') as new_zip:
             for file in os.listdir(f"{src_directory_path}/tmp/src"):
