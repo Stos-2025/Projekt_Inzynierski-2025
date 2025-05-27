@@ -1,7 +1,7 @@
 import io
 import signal
 import time
-from typing import List
+from typing import List, Tuple
 import requests
 import os
 import zipfile
@@ -10,12 +10,13 @@ from common import SubmissionResult, TestResult
 
 
 
-def fetch_submission(url: str, submission_directory_path: str, queue="stosvs") -> str:
+def fetch_submission(url: str, submission_directory_path: str, queue="stosvs") -> Tuple[str, str, str, str]:
     params = {
         "f": "get",
         "name": queue
     }
     response = requests.get(url, params=params)
+    mainfile = ""
     if response.status_code == 200:
         problem_id = response.headers.get('X-Param').split(";")[0]
         server_id = response.headers.get('X-Server-Id')
@@ -29,26 +30,19 @@ def fetch_submission(url: str, submission_directory_path: str, queue="stosvs") -
         submission_id = f"{str(uuid4())}.{server_id}"
         src_directory_path = f'{submission_directory_path}/{submission_id}'
         os.system(f"mkdir -p {src_directory_path}/tmp/src")
-
-       
+         
         with zipfile.ZipFile(io.BytesIO(content), 'r') as zip_ref:
             file_list = zip_ref.infolist()
             if file_list:
-                filename = file_list[0].filename
-                print(f"First file name: {filename}")
-                with open(f"{src_directory_path}/tmp/src/__MAIN__{filename}", 'wb') as out_file:
-                    out_file.write(zip_ref.read(filename))
-            for info in file_list[1:]:
-                zip_ref.extract(info, f"{src_directory_path}/tmp/src/{info.filename}") 
-
-        os.system(f"ls -l {src_directory_path}/tmp/src")
-        # with zipfile.ZipFile(io.BytesIO(content), 'r') as zip_ref:
-        #     zip_ref.extractall(f"{src_directory_path}/tmp/src")
+                mainfile = file_list[0].filename
+            zip_ref.extractall(f"{src_directory_path}/tmp/src")
+        
         
         with zipfile.ZipFile(f"{src_directory_path}/src.zip", 'w') as new_zip:
             for file in os.listdir(f"{src_directory_path}/tmp/src"):
                 new_zip.write(f"{src_directory_path}/tmp/src/{file}", f"src/{file}")
-                
+
+        print(f"Mainfile: {mainfile}")
         os.system(f"rm -rf {src_directory_path}/tmp")
 
     elif response.status_code == 404:
@@ -56,7 +50,7 @@ def fetch_submission(url: str, submission_directory_path: str, queue="stosvs") -
     else:
         raise Exception(f"The request failed. Status code: {response.status_code}")
 
-    return problem_id, server_id, submission_id
+    return problem_id, server_id, submission_id, mainfile
 
 
 
@@ -228,7 +222,7 @@ def run_submission() -> None:
 
     # fetching the submission
     try:
-        problem_id, server_id, submission_id = fetch_submission(qurl, f"{shared_path}/submissions", queue_name)
+        problem_id, server_id, submission_id, mainfile = fetch_submission(qurl, f"{shared_path}/submissions", queue_name)
     except FileNotFoundError:
         return
     except Exception as e:
@@ -248,7 +242,8 @@ def run_submission() -> None:
     # todo: run the submission here
     params = {
         'task_url': f"file:///shared/problems/{problem_id}/tests.zip",
-        'submission_url': f"file:///shared/submissions/{submission_id}/src.zip"
+        'submission_url': f"file:///shared/submissions/{submission_id}/src.zip",
+        'mainfile': mainfile
     }
     requests.put(f"{os.getenv('MASTER_URL')}/submissions/{submission_id}", params=params)
 

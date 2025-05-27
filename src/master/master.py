@@ -10,14 +10,16 @@ class Submission:
     status: str = None
     task_url: str = None
     submissions_url: str = None
+    mainfile: Optional[str] = None
     result: Optional[SubmissionResult] = None
-    def __init__(self, id: str, status: str, task_url: str, submissions_url: str):
+    def __init__(self, id: str, status: str, task_url: str, submissions_url: str, mainfile: Optional[str] = None):
         self.id = id
         self.status = status
         self.task_url = task_url
         self.submissions_url = submissions_url
+        self.mainfile = mainfile
         self.result = SubmissionResult()
-    
+
 submissions: Dict[str, Submission] = {}
 pending: List[str] = []
 running: List[str] = []
@@ -65,7 +67,7 @@ async def get_submission():
         task_url = submissions[submission_id].task_url
         submission_url = submissions[submission_id].submissions_url
 
-    return {"submission_id": submission_id, "submission_url": submission_url, "task_url": task_url}
+    return {"submission_id": submission_id, "submission_url": submission_url, "task_url": task_url, "mainfile": submissions[submission_id].mainfile}
 
 
 @master_app.get("/submissions/{submission_id}/status")
@@ -101,12 +103,12 @@ async def pop_submission(submission_id: str):
         return {"result": result}
 
 @master_app.put("/submissions/{submission_id}")
-async def put_submission(submission_id: str, task_url: str=r"file:///shared/problems/1/tests.zip", submission_url: str=r"file:///shared/submissions/2203460/src.zip"):
+async def put_submission(submission_id: str, task_url: str=r"file:///shared/problems/1/tests.zip", submission_url: str=r"file:///shared/submissions/2203460/src.zip", mainfile: Optional[str] = None):
     with lock:
         if submission_id in submissions:
             raise HTTPException(status_code=400, detail="Submission ID already exists")
         pending.append(submission_id)
-        submissions[submission_id] = Submission(submission_id, "pending", task_url, submission_url)
+        submissions[submission_id] = Submission(submission_id, "pending", task_url, submission_url, mainfile)
         print(f"Submission {submission_id} added with task URL {task_url}")
     return {"message": "ok"}
 
