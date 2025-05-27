@@ -8,7 +8,7 @@ RUN adduser -S stos -G stos
 
 ENV MASTER_URL=http://master:80
 ENV GUI_URL=https://igrzyska.eti.pg.gda.pl
-
+ENV QUEUE_NAME="stos2025"
 
 WORKDIR /app
 COPY adapter/adapter.py .

@@ -202,6 +202,7 @@ Compiling...Running...OK
 
 def run_submission() -> None:
     gui_url = os.getenv("GUI_URL")
+    queue_name = os.getenv("QUEUE_NAME")
     if gui_url is None:
         raise ValueError("GUI_URL environment variable is not set")
     qurl = f"{gui_url}/qapi/qctrl.php"
@@ -210,7 +211,7 @@ def run_submission() -> None:
 
     # fetching the submission
     try:
-        problem_id, server_id, submission_id = fetch_submission(qurl, f"{shared_path}/submissions")
+        problem_id, server_id, submission_id = fetch_submission(qurl, f"{shared_path}/submissions", )
     except FileNotFoundError:
         return
     except Exception as e:
