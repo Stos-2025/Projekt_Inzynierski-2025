@@ -21,8 +21,8 @@ def fetch_submission(url: str, submission_directory_path: str, queue="stosvs") -
         problem_id = response.headers.get('X-Param').split(";")[0]
         server_id = response.headers.get('X-Server-Id')
         content = response.content
-        print(f"Headers: {response.headers}")
-        print(f"Data: {content}...")
+        # print(f"Headers: {response.headers}")
+        # print(f"Data: {content}...")
         print(f"Server ID: {server_id}")
         print(f"Problem ID: {problem_id}")
         print(f"Queue: {queue}")
