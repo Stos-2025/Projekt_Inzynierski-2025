@@ -41,6 +41,7 @@ def fetch_submission(url: str, submission_directory_path: str, queue="stosvs") -
             for info in file_list[1:]:
                 zip_ref.extract(info, f"{src_directory_path}/tmp/src/{info.filename}") 
 
+        os.system(f"ls -l {src_directory_path}/tmp/src")
         # with zipfile.ZipFile(io.BytesIO(content), 'r') as zip_ref:
         #     zip_ref.extractall(f"{src_directory_path}/tmp/src")
         
