@@ -16,8 +16,6 @@ def fetch_submission(url: str, submission_directory_path: str, queue="stosvs") -
         "name": queue
     }
     response = requests.get(url, params=params)
-    print(f"Fetching submission from {url} with params {params}")
-    print(response.headers)
     if response.status_code == 200:
         problem_id = response.headers.get('X-Param').split(";")[0]
         server_id = response.headers.get('X-Server-Id')
