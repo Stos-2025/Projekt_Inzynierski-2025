@@ -22,6 +22,7 @@ def fetch_submission(url: str, submission_directory_path: str, queue="stosvs") -
         content = response.content
         print(f"Server ID: {server_id}")
         print(f"Problem ID: {problem_id}")
+        print(f"Queue: {queue}")
         
         submission_id = f"{str(uuid4())}.{server_id}"
         src_directory_path = f'{submission_directory_path}/{submission_id}'
@@ -202,9 +203,11 @@ Compiling...Running...OK
 
 def run_submission() -> None:
     gui_url = os.getenv("GUI_URL")
-    queue_name = os.getenv("QUEUE_NAME")
     if gui_url is None:
         raise ValueError("GUI_URL environment variable is not set")
+    queue_name = os.getenv("QUEUE_NAME")
+    if queue_name is None:
+        raise ValueError("QUEUE_NAME environment variable is not set")
     qurl = f"{gui_url}/qapi/qctrl.php"
     fsurl = f"{gui_url}/fsapi/fsctrl.php"
     shared_path = "/shared"
