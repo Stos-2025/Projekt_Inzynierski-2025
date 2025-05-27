@@ -16,6 +16,8 @@ def fetch_submission(url: str, submission_directory_path: str, queue="stosvs") -
         "name": queue
     }
     response = requests.get(url, params=params)
+    print(f"Fetching submission from {url} with params {params}")
+    print(response.headers)
     if response.status_code == 200:
         problem_id = response.headers.get('X-Param').split(";")[0]
         server_id = response.headers.get('X-Server-Id')
@@ -206,7 +208,6 @@ def run_submission() -> None:
     if gui_url is None:
         raise ValueError("GUI_URL environment variable is not set")
     queue_name = os.getenv("QUEUE_NAME")
-    print(f"Queue: {queue_name}")
     if queue_name is None:
         raise ValueError("QUEUE_NAME environment variable is not set")
     qurl = f"{gui_url}/qapi/qctrl.php"
