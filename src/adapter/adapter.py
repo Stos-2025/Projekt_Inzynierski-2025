@@ -1,16 +1,16 @@
 import io
 import signal
 import time
-from typing import List, Tuple
+from types import FrameType
+from typing import Any, Dict, List, Optional, Tuple
 import requests
 import os
 import zipfile
 from uuid import uuid4
-from common import SubmissionResult, TestResult
+from common.stos_common import SubmissionResult
 
 
-
-def fetch_submission(url: str, submission_directory_path: str, queue="stosvs") -> Tuple[str, str, str, str]:
+def fetch_submission(url: str, submission_directory_path: str, queue: str="stosvs") -> Tuple[str, str, str, str]:
     params = {
         "f": "get",
         "name": queue
@@ -18,7 +18,7 @@ def fetch_submission(url: str, submission_directory_path: str, queue="stosvs") -
     response = requests.get(url, params=params)
     mainfile = ""
     if response.status_code == 200:
-        problem_id = response.headers.get('X-Param').split(";")[0]
+        problem_id = response.headers.get('X-Param').split(";")[0] # type: ignore
         server_id = response.headers.get('X-Server-Id')
         content = response.content
         # print(f"Headers: {response.headers}")
@@ -49,15 +49,16 @@ def fetch_submission(url: str, submission_directory_path: str, queue="stosvs") -
         raise FileNotFoundError("Submission not found")
     else:
         raise Exception(f"The request failed. Status code: {response.status_code}")
+    if not server_id:
+        raise ValueError("Invalid response from the server")
 
     return problem_id, server_id, submission_id, mainfile
 
 
-
 def list(url: str, problem_id: str, area: int = 0) -> str:
-    params = {
+    params: Dict[str, Any] = {
         "f": "list",
-        "area": area,  
+        "area": area, 
         "pid": problem_id,
     }
     response = requests.get(url, params=params)
@@ -68,11 +69,10 @@ def list(url: str, problem_id: str, area: int = 0) -> str:
     return response_content
 
 
-
-def get_file(url: str, destination_path: str, file_name: str, problem_id, area: int=0) -> None:
-    params = {
+def get_file(url: str, destination_path: str, file_name: str, problem_id: str, area: int=0) -> None:
+    params: Dict[str, Any] = {
         "f": "get",
-        "area": area,  
+        "area": area,
         "pid": problem_id,
         "name": file_name
     }
@@ -86,7 +86,6 @@ def get_file(url: str, destination_path: str, file_name: str, problem_id, area: 
         raise Exception(f"The request failed. Status code: {response.status_code}")
 
 
-
 def fetch_problem(url: str, problem_directory_path: str, problem_id: str) -> None:
     problem_directory_path = f'{problem_directory_path}/{problem_id}'
     problem_tests_zip_path = f"{problem_directory_path}/tests.zip"
@@ -94,6 +93,7 @@ def fetch_problem(url: str, problem_directory_path: str, problem_id: str) -> Non
     os.system(f"rm -rf {problem_directory_path}/*")
     os.system(f"mkdir -p {problem_directory_path}/tmp/in")
     os.system(f"mkdir -p {problem_directory_path}/tmp/out")
+    os.system(f"mkdir -p {problem_directory_path}/tmp/other")
     try:
         file_list = list(url, problem_id)
     except Exception as e:
@@ -107,10 +107,14 @@ def fetch_problem(url: str, problem_directory_path: str, problem_id: str) -> Non
                 if file_name.endswith(".in"):
                     get_file(url, f"{problem_directory_path}/tmp/in/{file_name}", file_name, problem_id)
                     tests_zip.write(f"{problem_directory_path}/tmp/in/{file_name}", f"in/{file_name}")
-                if file_name.endswith(".out"):
+                elif file_name.endswith(".out"):
                     get_file(url, f"{problem_directory_path}/tmp/out/{file_name}", file_name, problem_id)
                     tests_zip.write(f"{problem_directory_path}/tmp/out/{file_name}", f"out/{file_name}")
-        os.system(f"rm -rf {problem_directory_path}/tmp")
+                elif file_name == "script.txt":
+                    get_file(url, f"{problem_directory_path}/tmp/other/{file_name}", file_name, problem_id)
+                    tests_zip.write(f"{problem_directory_path}/tmp/other/{file_name}", f"other/{file_name}")
+        # todo: uncomment this line to remove tmp directory after zipping
+        # os.system(f"rm -rf {problem_directory_path}/tmp")
 
     except Exception as e:
         print(f"An error occurred while fetching files: {e}")
@@ -187,9 +191,10 @@ f"""
 """
         
     if len(result.info) != 0:
+        infor_parsed = result.info.replace("\n", "<br>")
         info_content += \
 f"""
-    <section class="my-section">{result.info.replace("\n", "<br>")}</section>
+    <section class="my-section">{infor_parsed}</section> 
 """
         
     debug_content = \
@@ -211,46 +216,42 @@ Compiling...Running...OK
 
 def run_submission() -> None:
     gui_url = os.getenv("GUI_URL")
-    if gui_url is None:
-        raise ValueError("GUI_URL environment variable is not set")
-    queue_name = os.getenv("QUEUE_NAME")
-    if queue_name is None:
-        raise ValueError("QUEUE_NAME environment variable is not set")
+    queue_names = os.getenv("QUEUE_NAMES").split(",") # type: ignore
     qurl = f"{gui_url}/qapi/qctrl.php"
     fsurl = f"{gui_url}/fsapi/fsctrl.php"
     shared_path = "/shared"
 
     # fetching the submission
-    try:
-        problem_id, server_id, submission_id, mainfile = fetch_submission(qurl, f"{shared_path}/submissions", queue_name)
-    except FileNotFoundError:
-        return
-    except Exception as e:
-        print(f"An error occurred while fetching the submission: {e}")
-        return
+    for queue_name in queue_names:
+        try:
+            problem_id, _, submission_id, mainfile = fetch_submission(qurl, f"{shared_path}/submissions", queue_name)
+        except FileNotFoundError:
+            continue
+        except Exception as e:
+            print(f"An error occurred while fetching the submission: {e}")
+            return
+
+        # fetching the problem tests
+        try:
+            fetch_problem(fsurl, f"{shared_path}/problems", problem_id)
+        except Exception as e:
+            print(f"An error occurred while fetching the problem: {e}")
+            return
     
 
-    # fetching the problem
-    try:
-        fetch_problem(fsurl, f"{shared_path}/problems", problem_id)
-    except Exception as e:
-        print(f"An error occurred while fetching the problem: {e}")
-        return
-   
-
-    # running the submission
-    # todo: run the submission here
-    params = {
-        'task_url': f"file:///shared/problems/{problem_id}/tests.zip",
-        'submission_url': f"file:///shared/submissions/{submission_id}/src.zip",
-        'mainfile': mainfile
-    }
-    requests.put(f"{os.getenv('MASTER_URL')}/submissions/{submission_id}", params=params)
+        # running the submission
+        compiler: str = "python3" if queue_name == "stos2025-python" else "gpp"
+        params: Dict[str, Any] = {
+            'task_url': f"file:///shared/problems/{problem_id}/tests.zip",
+            'submission_url': f"file:///shared/submissions/{submission_id}/src.zip",
+            'compiler': compiler,
+            'mainfile': mainfile
+        }
+        requests.put(f"{os.getenv('MASTER_URL')}/submissions/{submission_id}", params=params)
 
 
-def handle_signal(signum, frame) -> None:
+def handle_signal(signum: int, frame: Optional[FrameType]) -> None:
     exit(0)
-
 
 
 def report_completed_submission() -> None:
@@ -259,7 +260,7 @@ def report_completed_submission() -> None:
         raise ValueError("GUI_URL environment variable is not set")
     repurl = f"{gui_url}/io-result.php"
 
-    response = requests.get(f"{os.getenv("MASTER_URL")}/submissions/completed")
+    response = requests.get(f"{os.getenv("MASTER_URL")}/submissions/completed") # type: ignore
     if response.status_code == 200:
         submission_ids: List[str] = response.json()["submission_ids"]
     else:
@@ -268,7 +269,7 @@ def report_completed_submission() -> None:
     for submission_id in submission_ids:
         if len(submission_id.split(".")) < 2:
             continue
-        response = requests.delete(f"{os.getenv("MASTER_URL")}/submissions/{submission_id}")
+        response = requests.delete(f"{os.getenv("MASTER_URL")}/submissions/{submission_id}") # type: ignore
         
         if response.status_code == 200:
             result: SubmissionResult = SubmissionResult(**response.json()["result"])

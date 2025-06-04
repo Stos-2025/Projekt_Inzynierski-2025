@@ -9,13 +9,16 @@ RUN adduser -S stos -G stos
 
 WORKDIR /app
 COPY worker/worker.py .
-COPY common/common.py .
+COPY common/ ./common/
+
 
 ENV MASTER_URL=http://master:80
 ENV WORKERS_DATA_LOCAL_PATH=/workers
 ENV WORKERS_DATA_HOST_PATH=/home/damian/Projekty/Projekt_Inzynierski-2025/stos-files/workers
 
-ENV COMP_IMAGE_NAME=d4m14n/stos:gpp_comp-latest
+ENV GPP_COMP_IMAGE_NAME=d4m14n/stos:gpp_comp-latest
+ENV PYTHON_COMP_IMAGE_NAME=d4m14n/stos:python3_comp-latest
+
 ENV EXEC_IMAGE_NAME=d4m14n/stos:exec-latest
 ENV JUDGE_IMAGE_NAME=d4m14n/stos:judge-latest
 

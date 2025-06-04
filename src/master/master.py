@@ -1,24 +1,8 @@
-import uuid
 import logging
 import threading
 from typing import Dict, List, Optional
-from fastapi import FastAPI, File, HTTPException, Request, UploadFile, BackgroundTasks
-from common import SubmissionResult, TestResult
-
-class Submission:
-    id: str = None
-    status: str = None
-    task_url: str = None
-    submissions_url: str = None
-    mainfile: Optional[str] = None
-    result: Optional[SubmissionResult] = None
-    def __init__(self, id: str, status: str, task_url: str, submissions_url: str, mainfile: Optional[str] = None):
-        self.id = id
-        self.status = status
-        self.task_url = task_url
-        self.submissions_url = submissions_url
-        self.mainfile = mainfile
-        self.result = SubmissionResult()
+from fastapi import FastAPI, HTTPException, Request
+from common.stos_common import Submission, SubmissionResult, SubmissionWorkerDto
 
 submissions: Dict[str, Submission] = {}
 pending: List[str] = []
@@ -32,12 +16,12 @@ logging.basicConfig(level=logging.INFO)
 
 
 @master_app.middleware("http")
-async def selective_access_log(request: Request, call_next):
-    response = await call_next(request)
-    if (response.status_code == 404 and request.url.path == "/worker/submission" or request.url.path == "/submissions/completed"):
-        return response
-    logger.info(f"{request.method} {request.url.path} - {response.status_code}")
-    return response
+async def selective_access_log(request: Request, call_next):  # type: ignore
+    response = await call_next(request) # type: ignore
+    if (response.status_code == 404 and request.url.path == "/worker/submission" or request.url.path == "/submissions/completed"): # type: ignore
+        return response # type: ignore
+    logger.info(f"{request.method} {request.url.path} - {response.status_code}") # type: ignore
+    return response # type: ignore
 
 
 @master_app.put("/worker/submissions/{submission_id}/result")
@@ -64,10 +48,9 @@ async def get_submission():
         submission_id = pending.pop(0)
         running.append(submission_id)
         submissions[submission_id].status = "running"
-        task_url = submissions[submission_id].task_url
-        submission_url = submissions[submission_id].submissions_url
 
-    return {"submission_id": submission_id, "submission_url": submission_url, "task_url": task_url, "mainfile": submissions[submission_id].mainfile}
+        submission: SubmissionWorkerDto = SubmissionWorkerDto.from_submission(submissions[submission_id])
+    return submission
 
 
 @master_app.get("/submissions/{submission_id}/status")
@@ -103,12 +86,12 @@ async def pop_submission(submission_id: str):
         return {"result": result}
 
 @master_app.put("/submissions/{submission_id}")
-async def put_submission(submission_id: str, task_url: str=r"file:///shared/problems/1/tests.zip", submission_url: str=r"file:///shared/submissions/2203460/src.zip", mainfile: Optional[str] = None):
+async def put_submission(submission_id: str, task_url: str=r"file:///shared/problems/1/tests.zip", submission_url: str=r"file:///shared/submissions/2203460/src.zip", compiler: Optional[str] = None, mainfile: Optional[str] = None):
     with lock:
         if submission_id in submissions:
             raise HTTPException(status_code=400, detail="Submission ID already exists")
         pending.append(submission_id)
-        submissions[submission_id] = Submission(submission_id, "pending", task_url, submission_url, mainfile)
+        submissions[submission_id] = Submission(id=submission_id, status="pending", task_url=task_url, submissions_url=submission_url, compiler=compiler, mainfile=mainfile)
         print(f"Submission {submission_id} added with task URL {task_url}")
     return {"message": "ok"}
 

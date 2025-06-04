@@ -6,18 +6,18 @@ import signal
 import zipfile
 import requests
 import subprocess
-import urllib.parse
+# import urllib.parse
 import urllib.request
-from common import SubmissionResult, TestResult
-from typing import Tuple, List, Optional
+from types import FrameType
+from typing import List, Optional
+from common.stos_common import SubmissionResult, TestResult, SubmissionWorkerDto
 
 
-MASTER_URL: str = os.getenv("MASTER_URL")
-EXEC_IMAGE: str = os.getenv(r"EXEC_IMAGE_NAME")
-COMP_IMAGE: str = os.getenv(r"COMP_IMAGE_NAME")
-JUDGE_IMAGE: str = os.getenv(r"JUDGE_IMAGE_NAME")
-DATA_LOCAL_PATH = f"{os.getenv("WORKERS_DATA_LOCAL_PATH")}/{os.getenv("HOSTNAME")}"
-DATA_HOST_PATH = f"{os.getenv("WORKERS_DATA_HOST_PATH")}/{os.getenv("HOSTNAME")}"
+MASTER_URL: str = os.getenv("MASTER_URL") # type: ignore
+EXEC_IMAGE: str = os.getenv(r"EXEC_IMAGE_NAME") # type: ignore
+JUDGE_IMAGE: str = os.getenv(r"JUDGE_IMAGE_NAME") # type: ignore
+DATA_LOCAL_PATH = f"{os.getenv("WORKERS_DATA_LOCAL_PATH")}/{os.getenv("HOSTNAME")}" # type: ignore
+DATA_HOST_PATH = f"{os.getenv("WORKERS_DATA_HOST_PATH")}/{os.getenv("HOSTNAME")}" # type: ignore
 
 
 def main() -> None:
@@ -29,7 +29,7 @@ def main() -> None:
             time.sleep(100e-3)
 
 
-def handle_signal(signum, frame) -> None:
+def handle_signal(signum: int, frame: Optional[FrameType]) -> None:
     exit(0)
 
 def get_debug(path: str) -> str:
@@ -46,7 +46,7 @@ def get_results(path: str) -> SubmissionResult:
     
     submission_result.info = get_debug(path)
     points = 0
-    tests = []
+    tests: List[str] = []
     for file in os.listdir(path):
         if file.endswith('.judge.json'):
             tests.append(file.split('.')[0])
@@ -91,26 +91,22 @@ def print_results(submission_result: SubmissionResult) -> str:
 
 
 def fetch_data(url: str, dst_path: str, timeout: int) -> None:
-    print(f"Fetching from URL: {url}")
-    print(f"Destination path: {dst_path}")
+    print(f"Fetching: '{url}' -> '{dst_path}'")
     response = urllib.request.urlopen(url, timeout=timeout)
     zip_data = io.BytesIO(response.read())
     with zipfile.ZipFile(zip_data, 'r') as zip_ref:
         zip_ref.extractall(dst_path) 
 
 
-def fetch_submission() -> Tuple[str, str, str]:
+def fetch_submission() -> SubmissionWorkerDto:
     response = requests.post(f"{MASTER_URL}/worker/submission")
     if response.status_code == 404:
         raise FileNotFoundError("Submission not found")
     elif response.status_code != 200:
         raise Exception("Failed to fetch submission")
-    
-    submission_id = response.json()["submission_id"]
-    submission_url = response.json()["submission_url"]
-    problem_url = response.json()["task_url"]
-    
-    return submission_id, submission_url, problem_url
+
+    result: SubmissionWorkerDto = SubmissionWorkerDto.model_validate(response.json()) # type: ignore
+    return result # type: ignore
 
 
 def report_result(submission_id: str, result: Optional[SubmissionResult]) -> None:
@@ -123,7 +119,7 @@ def report_result(submission_id: str, result: Optional[SubmissionResult]) -> Non
         except Exception:
             result.info = "Error while running submission"
     try:
-        requests.put(url, json=result.model_dump())
+        requests.put(url, json=result.model_dump())  # type: ignore
     except requests.exceptions.RequestException:
         print(f"Error while reporting result", flush=True)
 
@@ -138,7 +134,7 @@ def init() -> None:
 
 def run_submission() -> bool:
     try:
-        submission_id, submission_url, problem_url = fetch_submission()
+        submission_dto = fetch_submission()
     except FileNotFoundError:
         return True
     except requests.exceptions.RequestException as e:
@@ -147,6 +143,8 @@ def run_submission() -> bool:
         print(f"Error while fetching submission: {e}", flush=True)
         return True
     
+    print(f"Running submission {submission_dto.id} \nwith compiler {submission_dto.compiler} \nand mainfile {submission_dto.mainfile}", flush=True)
+
     init()
     problem_path = r"tmp/tests"
     problem_local_path: str = f"{DATA_LOCAL_PATH}/{problem_path}"
@@ -156,19 +154,19 @@ def run_submission() -> bool:
     submission_host_path: str = f"{DATA_HOST_PATH}/{submission_path}"
 
     try:
-        fetch_data(submission_url, submission_local_path, 10)
-        fetch_data(problem_url, problem_local_path, 10)
+        fetch_data(submission_dto.submissions_url, submission_local_path, 10)
+        fetch_data(submission_dto.task_url, problem_local_path, 10)
     except Exception as e:
         print(f"Error while fetching problem and submission data: {e}", flush=True)
         return True
 
-    print(f"Running submission {submission_id} tp: {problem_host_path} sp: {submission_host_path}", flush=True)
-    result: Optional[SubmissionResult] = run(submission_host_path, problem_host_path)
-    report_result(submission_id, result)
+    # print(f"Running submission {submission_worker.id} tp: {problem_host_path} sp: {submission_host_path}", flush=True)
+    result: Optional[SubmissionResult] = run(submission_host_path, problem_host_path, submission_dto.compiler, submission_dto.mainfile)
+    report_result(submission_dto.id, result)
     return False
     
 
-def run(submission_path: str, problem_path: str) -> Optional[SubmissionResult]:
+def run(submission_path: str, problem_path: str, compiler: Optional[str]="gpp", mainfile: Optional[str] = "main.py") -> Optional[SubmissionResult]:
     src_path=f"{submission_path}/src"
     problem_in_path=f"{problem_path}/in"
     problem_out_path=f"{problem_path}/out"
@@ -177,6 +175,12 @@ def run(submission_path: str, problem_path: str) -> Optional[SubmissionResult]:
     artifacts_bin_path=f"{artifacts_path}/bin"
     artifacts_std_path=f"{artifacts_path}/std"
     artifacts_out_path=f"{artifacts_path}/out"
+
+    GPP_COMP_IMAGE: str = os.getenv(r"GPP_COMP_IMAGE_NAME") # type: ignore
+    PYTHON_COMP_IMAGE: str = os.getenv(r"PYTHON_COMP_IMAGE_NAME") # type: ignore
+    COMP_IMAGE: str = PYTHON_COMP_IMAGE if compiler == "python3" else GPP_COMP_IMAGE 
+    MAINFILE: str = mainfile if mainfile else "main.py"
+    print(f"Using compiler image: {COMP_IMAGE}", flush=True)
 
     compile_command = [
         'docker', 'run',
@@ -187,6 +191,7 @@ def run(submission_path: str, problem_path: str) -> Optional[SubmissionResult]:
         '-e', 'SRC=/data/src',
         '-e', 'OUT=/data/out',
         '-e', 'BIN=/data/bin',
+        '-e', f'MAINFILE={MAINFILE}',
         '-v', f'{src_path}:/data/src:ro',
         '-v', f'{artifacts_bin_path}:/data/bin:rw',
         '-v', f'{artifacts_out_path}:/data/out:rw',
@@ -228,7 +233,7 @@ def run(submission_path: str, problem_path: str) -> Optional[SubmissionResult]:
     
     try:
         subprocess.run(compile_command)
-    except Exception:
+    except Exception as e:
         return None
     try:
         subprocess.run(execute_command)

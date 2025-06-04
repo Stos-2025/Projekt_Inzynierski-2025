@@ -26,7 +26,7 @@ services:
       - ${STOS_FILES}/shared:/shared:rw
     environment:
       - MASTER_URL=http://master:80
-      - QUEUE_NAME=stos2025
+      - QUEUE_NAMES=stos2025,stos2025-python
       - GUI_URL=${GUI_URL}
 
   master:

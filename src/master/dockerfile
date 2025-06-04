@@ -1,4 +1,4 @@
-FROM alpine:3.20
+FROM alpine:3.21
 
 RUN apk add --no-cache python3 py3-pip
 RUN pip install --break-system-packages fastapi uvicorn python-multipart requests
@@ -8,7 +8,7 @@ RUN adduser -S stos -G stos
 
 WORKDIR /app
 COPY master/master.py .
-COPY common/common.py .
+COPY common/ ./common/
 
 USER stos:stos
 ENTRYPOINT ["uvicorn", "master:master_app", "--no-access-log", "--host", "0.0.0.0", "--port", "80"]
