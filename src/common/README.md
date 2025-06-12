@@ -4,16 +4,16 @@ The `common` directory contains shared model and DTO definitions used by various
 
 ## Files
 
-- [`models.py`](src/common/models.py)  
+- [`models.py`](../../src/common/models.py)  
   Contains Pydantic classes describing main data structures, such as:
-  - [`TestResult`](src/common/models.py)
-  - [`SubmissionResult`](src/common/models.py)
-  - [`Test`](src/common/models.py)
-  - [`Problem`](src/common/models.py)
-  - [`Submission`](src/common/models.py)
+  - [`TestResult`](../../src/common/models.py)
+  - [`SubmissionResult`](../../src/common/models.py)
+  - [`Test`](../../src/common/models.py)
+  - [`Problem`](../../src/common/models.py)
+  - [`Submission`](../../src/common/models.py)
 
 - [`dtos.py`](src/common/dtos.py)  
-  Defines Data Transfer Objects (DTOs), e.g. [`SubmissionWorkerDto`](src/common/dtos.py), used for communication between services.
+  Defines Data Transfer Objects (DTOs), e.g. [`SubmissionWorkerDto`](../../src/common/dtos.py), used for communication between services.
 
 ## Purpose
 

@@ -7,10 +7,10 @@ This directory contains configuration files and scripts for building and running
 
 ## Files
 
-- [`compose.yml`](src/conf/compose.yml)  
+- [`compose.yml`](../../src/conf/compose.yml)  
   Docker Compose file that defines and connects the main services: master, worker, and adapter.
 
-- [`.env`](src/conf/.env)  
+- [`.env`](../../src/conf/.env)  
   Environment variable definitions used by Docker Compose and services.
 
   **Main variables:**
@@ -23,7 +23,7 @@ This directory contains configuration files and scripts for building and running
   > [!IMPORTANT]
   > Edit this file to match your environment and deployment setup.
 
-- [`dev/`](src/conf/dev/)  
+- [`dev/`](../../src/conf/dev/)  
   (Optional) Python virtual environment for local development.
 
 ## Usage

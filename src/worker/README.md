@@ -7,7 +7,7 @@ This directory contains the **worker** service for the STOS project. The worker 
 
 ## Files
 
-- [`worker.py`](src/worker/worker.py)  
+- [`worker.py`](../worker/worker.py)  
   The main script for the worker service. It is responsible for:
   - Fetching submissions from the master service (`/worker/submission` endpoint).
   - Downloading problem and submission files.
@@ -16,7 +16,7 @@ This directory contains the **worker** service for the STOS project. The worker 
   - Collecting test results and reporting them back to the master (`/worker/submissions/{submission_id}/result` endpoint).
   - Handling system signals and periodically checking for new submissions.
 
-- [`dockerfile`](src/worker/dockerfile)  
+- [`dockerfile`](../worker/dockerfile)  
   The Dockerfile for building the worker image:
   - Based on the `docker:dind` (Docker-in-Docker) image.
   - Installs required dependencies: Python, requests, pydantic.
@@ -38,7 +38,7 @@ To build the worker image:
 docker build -t stos_worker ./src/worker
 ```
 
-To run the service using docker-compose, use the [`src/conf/up.sh`](src/conf/up.sh) script or the [`src/conf/compose.yml`](src/conf/compose.yml) file.
+To run the service using docker-compose, use the [`src/conf/up.sh`](../conf/up.sh) script or the [`src/conf/compose.yml`](../conf/compose.yml) file.
 
 ## Workflow
 

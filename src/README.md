@@ -6,19 +6,19 @@ This directory contains the source code for the STOS project, including all main
 
 ## Structure
 
-- [`common/`](src/common/)  
+- [`common/`](common/)  
   Shared Pydantic models and DTOs used by all services for consistent data exchange.
 
-- [`master/`](src/master/)  
+- [`master/`](master/)  
   Source code for the master service, responsible for managing tasks and coordinating workers.
 
-- [`worker/`](src/worker/)  
+- [`worker/`](worker/)  
   Source code for the worker service, which processes tasks assigned by the master.
 
-- [`adapter/`](src/adapter/)  
+- [`adapter/`](adapter/)  
   Source code for the adapter service, handling communication with external systems or user interfaces.
 
-- [`conf/`](src/conf/)  
+- [`conf/`](conf/)  
   Configuration files and scripts for building, running, and managing the services (e.g., Docker Compose, environment variables).
 
 ## Getting Started
