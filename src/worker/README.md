@@ -1,4 +1,7 @@
 # Worker Service
+> [!WARNING]
+> Work is still in progress. This file can be outdated.
+
 
 This directory contains the **worker** service for the STOS project. The worker is responsible for fetching tasks from the master service, executing them in isolated containers, and reporting the results.
 
