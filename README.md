@@ -11,6 +11,7 @@ This repository contains the source code and configuration for the STOS project,
 
 1. **Configure Environment:**  
    Edit [`src/conf/.env`](src/conf/.env) to set environment variables as needed.
+   For more information see: [README.md](src/conf/README.md).
 
 2. **Build and Run Services:**  
    Use the provided Docker Compose file:

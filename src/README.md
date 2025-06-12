@@ -40,4 +40,4 @@ This directory contains the source code for the STOS project, including all main
 > - For detailed information about each service or module, see the respective README files in their subdirectories.
 
 ---
-For more details, refer to the documentation in each subdirectory.
+For more details, refer to the documentation in each subdirectory or the main [README.md](../README.md).

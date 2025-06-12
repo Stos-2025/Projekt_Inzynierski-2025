@@ -51,4 +51,4 @@ To run the service using docker-compose, use the [`src/conf/up.sh`](src/conf/up.
 
 ---
 
-For more information about the architecture, see the main [README.md](README.md) file.
+For more information about the architecture, see the main [README.md](../../README.md) file.
