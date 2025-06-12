@@ -38,4 +38,4 @@ docker compose -f src/conf/compose.yml up --build
 > - The `dev/` folder is not required for production and can be ignored if running in containers.
 
 ---
-For more information, see the main [README.md](../README.md)
+For more information, see the main [README.md](../../README.md)

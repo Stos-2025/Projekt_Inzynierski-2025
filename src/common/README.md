@@ -25,3 +25,5 @@ To add a new model or DTO:
 1. Add the appropriate class to `models.py` or `dtos.py`.
 2. Make sure to use Pydantic types (`BaseModel`).
 3. Import the new model in the services that require it.
+
+For more information, see the main [README.md](../../README.md)
