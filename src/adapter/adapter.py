@@ -8,7 +8,7 @@ import requests
 import os
 import zipfile
 from uuid import uuid4
-from common.stos_common import SubmissionResult
+from common.models import SubmissionResult
 
 
 def fetch_submission(url: str, submission_directory_path: str, queue: str="stosvs") -> Tuple[str, str, str, str]:
