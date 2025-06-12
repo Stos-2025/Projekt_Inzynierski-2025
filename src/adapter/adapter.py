@@ -1,4 +1,5 @@
 import io
+import re
 import signal
 import time
 from types import FrameType
@@ -85,6 +86,17 @@ def get_file(url: str, destination_path: str, file_name: str, problem_id: str, a
     else:
         raise Exception(f"The request failed. Status code: {response.status_code}")
 
+def parse_script(script_path: str) -> None:
+    results = []
+    with open(script_path, 'r', encoding='utf-8') as file:
+        for line in file:
+            if line.startswith("TST"):
+                match = re.match(r'^TST(?: \S+)? \S+ (\d+).*(\S+\.in)$', line)
+                if match:
+                    time_val = int(match.group(1))
+                    input_file = match.group(2)
+                    results.append((time_val, input_file)) # type: ignore
+    print(results) # type: ignore
 
 def fetch_problem(url: str, problem_directory_path: str, problem_id: str) -> None:
     problem_directory_path = f'{problem_directory_path}/{problem_id}'
@@ -115,6 +127,7 @@ def fetch_problem(url: str, problem_directory_path: str, problem_id: str) -> Non
                     tests_zip.write(f"{problem_directory_path}/tmp/other/{file_name}", f"other/{file_name}")
         # todo: uncomment this line to remove tmp directory after zipping
         # os.system(f"rm -rf {problem_directory_path}/tmp")
+        parse_script(f"{problem_directory_path}/tmp/other/script.txt")
 
     except Exception as e:
         print(f"An error occurred while fetching files: {e}")
