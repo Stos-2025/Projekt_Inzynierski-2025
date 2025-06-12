@@ -127,7 +127,7 @@ def fetch_problem(url: str, problem_directory_path: str, problem_id: str) -> Non
                     tests_zip.write(f"{problem_directory_path}/tmp/other/{file_name}", f"other/{file_name}")
         # todo: uncomment this line to remove tmp directory after zipping
         # os.system(f"rm -rf {problem_directory_path}/tmp")
-        parse_script(f"{problem_directory_path}/tmp/other/script.txt")
+        # parse_script(f"{problem_directory_path}/tmp/other/script.txt")
 
     except Exception as e:
         print(f"An error occurred while fetching files: {e}")

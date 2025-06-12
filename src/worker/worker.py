@@ -3,12 +3,13 @@ import io
 import json
 import shutil
 import time
+import docker
 import signal
 import zipfile
 import requests
-import subprocess
 import urllib.request
 from types import FrameType
+from natsort import natsorted
 from typing import List, Optional
 from common.dtos import SubmissionWorkerDto
 from common.models import SubmissionResult, TestResult
@@ -19,12 +20,13 @@ POOLING_INTERVAL = 100e-3  # seconds
 MASTER_URL: str = os.environ["MASTER_URL"]
 EXEC_IMAGE: str = os.environ["EXEC_IMAGE_NAME"]
 JUDGE_IMAGE: str = os.environ["JUDGE_IMAGE_NAME"]
-DATA_LOCAL_PATH = os.path.join(
-    os.environ["WORKERS_DATA_LOCAL_PATH"], os.environ["HOSTNAME"]
-)
-DATA_HOST_PATH = os.path.join(
-    os.environ["WORKERS_DATA_HOST_PATH"], os.environ["HOSTNAME"]
-)
+GPP_COMP_IMAGE: str = os.environ["GPP_COMP_IMAGE_NAME"]
+PYTHON_COMP_IMAGE: str = os.environ["PYTHON_COMP_IMAGE_NAME"]
+HOSTNAME: str = os.environ["HOSTNAME"]
+DATA_LOCAL_PATH = os.path.join(os.environ["WORKERS_DATA_LOCAL_PATH"], HOSTNAME)
+DATA_HOST_PATH = os.path.join(os.environ["WORKERS_DATA_HOST_PATH"], HOSTNAME)
+CONTAINERS_MEMORY_LIMIT = "512m"
+CONTAINERS_TIMEOUT = 300
 
 
 def handle_signal(signum: int, frame: Optional[FrameType]) -> None:
@@ -61,6 +63,7 @@ def get_results(path: str) -> SubmissionResult:
         if file.endswith(".judge.json"):
             test_names.append(file.split(".")[0])
 
+    test_names = natsorted(test_names) # type: ignore
     for test_name in test_names:
         exec_file_path = os.path.join(path, f"{test_name}.exec.json")
         judge_file_path = os.path.join(path, f"{test_name}.judge.json")
@@ -113,7 +116,8 @@ def fetch_data(url: str, dst_path: str, timeout: int) -> None:
 
 
 def fetch_submission() -> SubmissionWorkerDto:
-    response = requests.post(f"{MASTER_URL}/worker/submission")
+    submission_endpoint_url = f"{MASTER_URL}/worker/submission"
+    response = requests.post(submission_endpoint_url)
     if response.status_code == 404:
         raise FileNotFoundError("Submission not found")
     elif response.status_code != 200:
@@ -128,7 +132,7 @@ def report_result(submission_id: str, result: Optional[SubmissionResult]) -> Non
     if result is None:
         result = SubmissionResult()
         try:
-            result.info = get_debug(f"{DATA_LOCAL_PATH}/out")
+            result.info = get_debug(os.path.join(DATA_LOCAL_PATH, "out"))
         except Exception:
             result.info = "Error while running submission"
     try:
@@ -139,7 +143,8 @@ def report_result(submission_id: str, result: Optional[SubmissionResult]) -> Non
 
 def init_worker_files() -> None:
     os.umask(0)
-    shutil.rmtree(DATA_LOCAL_PATH)
+    if os.path.exists(DATA_LOCAL_PATH):
+        shutil.rmtree(DATA_LOCAL_PATH)
     os.makedirs(DATA_LOCAL_PATH)
     os.makedirs(os.path.join(DATA_LOCAL_PATH, "bin"))
     os.makedirs(os.path.join(DATA_LOCAL_PATH, "std"))
@@ -193,123 +198,100 @@ def process_submission() -> bool:
 
 def run_containers(
     submission_path: str,
-    problem_path: str,
+    tests_path: str,
     compiler: Optional[str] = "gpp",
     mainfile: Optional[str] = "main.py",
 ) -> Optional[SubmissionResult]:
-    src_path = f"{submission_path}/src"
-    problem_in_path = f"{problem_path}/in"
-    problem_out_path = f"{problem_path}/out"
+    src_path = os.path.join(submission_path, "src")
+    tests_in_path = os.path.join(tests_path, "in")
+    tests_out_path = os.path.join(tests_path, "out")
+
     artifacts_path = DATA_HOST_PATH
+    artifacts_bin_path = os.path.join(artifacts_path, "bin")
+    artifacts_std_path = os.path.join(artifacts_path, "std")
+    artifacts_out_path = os.path.join(artifacts_path, "out")
 
-    artifacts_bin_path = f"{artifacts_path}/bin"
-    artifacts_std_path = f"{artifacts_path}/std"
-    artifacts_out_path = f"{artifacts_path}/out"
+    mainfile = mainfile or "main.py"
+    comp_image: str = PYTHON_COMP_IMAGE if compiler == "python3" else GPP_COMP_IMAGE
 
-    GPP_COMP_IMAGE: str = os.environ["GPP_COMP_IMAGE_NAME"]
-    PYTHON_COMP_IMAGE: str = os.environ["PYTHON_COMP_IMAGE_NAME"]
-    COMP_IMAGE: str = PYTHON_COMP_IMAGE if compiler == "python3" else GPP_COMP_IMAGE
-    MAINFILE: str = mainfile if mainfile else "main.py"
-    print(f"Using compiler image: {COMP_IMAGE}")
-
-    compile_command = [
-        "docker",
-        "run",
-        "--rm",
-        "--ulimit",
-        "cpu=30:30",
-        "--network",
-        "none",
-        "--security-opt",
-        "no-new-privileges",
-        "-e",
-        "SRC=/data/src",
-        "-e",
-        "OUT=/data/out",
-        "-e",
-        "BIN=/data/bin",
-        "-e",
-        f"MAINFILE={MAINFILE}",
-        "-v",
-        f"{src_path}:/data/src:ro",
-        "-v",
-        f"{artifacts_bin_path}:/data/bin:rw",
-        "-v",
-        f"{artifacts_out_path}:/data/out:rw",
-        COMP_IMAGE,
-    ]
-    execute_command = [
-        "docker",
-        "run",
-        "--rm",
-        "--ulimit",
-        "cpu=30:30",
-        "--network",
-        "none",
-        "--security-opt",
-        "no-new-privileges",
-        "-e",
-        "LOGS=off",
-        "-e",
-        "IN=/data/in",
-        "-e",
-        "OUT=/data/out",
-        "-e",
-        "STD=/data/std",
-        "-e",
-        "BIN=/data/bin",
-        "-v",
-        f"{problem_in_path}:/data/in:ro",
-        "-v",
-        f"{artifacts_bin_path}:/data/bin:ro",
-        "-v",
-        f"{artifacts_std_path}:/data/std:rw",
-        "-v",
-        f"{artifacts_out_path}:/data/out:rw",
-        EXEC_IMAGE,
-    ]
-    judge_command = [
-        "docker",
-        "run",
-        "--rm",
-        "--ulimit",
-        "cpu=30:30",
-        "--network",
-        "none",
-        "--security-opt",
-        "no-new-privileges",
-        "-e",
-        "LOGS=off",
-        "-e",
-        "IN=/data/in",
-        "-e",
-        "OUT=/data/out",
-        "-e",
-        "ANS=/data/ans",
-        "-v",
-        f"{problem_out_path}:/data/ans:ro",
-        "-v",
-        f"{artifacts_std_path}:/data/in:ro",
-        "-v",
-        f"{artifacts_out_path}:/data/out:rw",
-        JUDGE_IMAGE,
-    ]
-
+    client = docker.from_env()
     try:
-        subprocess.run(compile_command)
+        container = client.containers.run(
+            image=comp_image,
+            detach=True,
+            remove=True,
+            mem_limit=CONTAINERS_MEMORY_LIMIT,
+            network_disabled=True,
+            security_opt=["no-new-privileges"],
+            environment={
+                "SRC": "/data/src",
+                "OUT": "/data/out",
+                "BIN": "/data/bin",
+                "MAINFILE": mainfile,
+            },
+            volumes={
+                src_path: {"bind": "/data/src", "mode": "ro"},
+                artifacts_bin_path: {"bind": "/data/bin", "mode": "rw"},
+                artifacts_out_path: {"bind": "/data/out", "mode": "rw"},
+            },
+        )
+        container.wait(timeout=CONTAINERS_TIMEOUT)
     except Exception as e:
+        print(f"Error while compiling: {e}")
         return None
     try:
-        subprocess.run(execute_command)
-    except Exception:
+        container = client.containers.run(
+            image=EXEC_IMAGE,
+            detach=True,
+            remove=True,
+            mem_limit=CONTAINERS_MEMORY_LIMIT,
+            network_disabled=True,
+            security_opt=["no-new-privileges"],
+            environment={
+                "LOGS": "off",
+                "IN": "/data/in",
+                "OUT": "/data/out",
+                "STD": "/data/std",
+                "BIN": "/data/bin",
+            },
+            volumes={
+                tests_in_path: {"bind": "/data/in", "mode": "ro"},
+                artifacts_bin_path: {"bind": "/data/bin", "mode": "ro"},
+                artifacts_std_path: {"bind": "/data/std", "mode": "rw"},
+                artifacts_out_path: {"bind": "/data/out", "mode": "rw"},
+            },
+        )
+        container.wait(timeout=CONTAINERS_TIMEOUT)
+    except Exception as e:
+        print(f"Error while executing: {e}")
         return None
     try:
-        subprocess.run(judge_command)
-    except Exception:
+        container = client.containers.run(
+            image=JUDGE_IMAGE,
+            detach=True,
+            remove=True,
+            mem_limit="512m",
+            network_disabled=True,
+            security_opt=["no-new-privileges"],
+            environment={
+                "LOGS": "off",
+                "IN": "/data/in",
+                "OUT": "/data/out",
+                "ANS": "/data/ans",
+            },
+            volumes={
+                tests_out_path: {"bind": "/data/ans", "mode": "ro"},
+                artifacts_std_path: {"bind": "/data/in", "mode": "ro"},
+                artifacts_out_path: {"bind": "/data/out", "mode": "rw"},
+            },
+        )
+        container.wait(timeout=CONTAINERS_TIMEOUT)
+    except Exception as e:
+        print(f"Error while judging: {e}")
         return None
 
     try:
-        result: SubmissionResult = get_results(f"{DATA_LOCAL_PATH}/out")
+        result: SubmissionResult = get_results(os.path.join(DATA_LOCAL_PATH, "out"))
     except Exception as e:
         print(f"Error while getting results: {e}")
         return None

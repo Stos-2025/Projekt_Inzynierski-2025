@@ -1,13 +1,15 @@
 services:
   worker:
-    image: worker
+    image: stos_worker
     restart: always
+    depends_on:
+      - master
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:rw
       - ${STOS_FILES}/shared:/shared:ro
       - ${STOS_FILES}/shared/workers:/workers:rw
+      - ${DOCKER_SOCK}:/var/run/docker.sock:rw
     environment:
       - WORKERS_DATA_LOCAL_PATH=/workers
       - WORKERS_DATA_HOST_PATH=${STOS_FILES}/shared/workers
@@ -15,12 +17,14 @@ services:
       - EXEC_IMAGE_NAME=${EXEC_IMAGE_NAME}
       - JUDGE_IMAGE_NAME=${JUDGE_IMAGE_NAME}
       - MASTER_URL=http://master:80
+    group_add:  
+      - ${DOCKER_GID}
     deploy:
       mode: replicated
       replicas: 3
      
   adapter:
-    image: adapter
+    image: stos_adapter
     restart: always
     volumes:
       - ${STOS_FILES}/shared:/shared:rw
@@ -30,7 +34,7 @@ services:
       - GUI_URL=${GUI_URL}
 
   master:
-    image: master
+    image: stos_master
     restart: always
     tty: true
     environment:

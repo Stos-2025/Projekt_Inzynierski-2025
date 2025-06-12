@@ -1,5 +1,4 @@
-FROM docker:dind
-# FROM alpine:3.21
+FROM alpine:3.21
 
 
 WORKDIR /app
@@ -21,12 +20,13 @@ COPY common/ ./common/
 
 
 # installing dependencies
-RUN apk add --no-cache python3 py3-requests py3-pydantic 
+RUN apk add --no-cache python3 py3-requests py3-pydantic py3-docker-py py3-natsort
 
 
 # setting up user
 RUN addgroup -S stos
 RUN adduser -S stos -G stos
+USER stos:stos
 
 
 # setting up envs
@@ -39,9 +39,5 @@ ENV EXEC_IMAGE_NAME=d4m14n/stos:exec-latest
 ENV JUDGE_IMAGE_NAME=d4m14n/stos:judge-latest
 
 
-
-EXPOSE 80
-ENTRYPOINT ["python3", "worker.py"]
-
-
-#docker build -t worker ./src/worker
+ENTRYPOINT ["python3", "-u" , "worker.py"]
+#docker build -t stos_worker ./src/worker
