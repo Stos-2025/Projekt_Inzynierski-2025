@@ -38,7 +38,7 @@ To build the worker image:
 docker build -t stos_worker ./src/worker
 ```
 
-To run the service using docker-compose, use the [`src/conf/up.sh`](../conf/up.sh) script or the [`src/conf/compose.yml`](../conf/compose.yml) file.
+To run the service using docker-compose, use the [`src/conf/compose.yml`](../conf/compose.yml) file.
 
 ## Workflow
 
