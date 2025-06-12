@@ -1,8 +1,9 @@
 import logging
 import threading
 from typing import Dict, List, Optional
+from common.dtos import SubmissionWorkerDto
 from fastapi import FastAPI, HTTPException, Request
-from common.stos_common import Submission, SubmissionResult, SubmissionWorkerDto
+from common.models import Submission, SubmissionResult
 
 submissions: Dict[str, Submission] = {}
 pending: List[str] = []
