@@ -88,25 +88,6 @@ def get_results(path: str) -> SubmissionResult:
     return submission_result
 
 
-def print_results(submission_result: SubmissionResult) -> str:
-    ret = ""
-    ret += "+------+------+-----+\n"
-    ret += "| name | time | ret |\n"
-    ret += "+------+------+-----+\n"
-    for result in submission_result.test_results:
-        color = 131
-        if result.grade:
-            color = 65
-        if result.ret_code != 0:
-            color = 173
-        ret += f"|\033[48;5;{color}m\033[38;5;232m {result.test_name:>4} |"
-        ret += f"{result.time:.2f} | {result.ret_code:>3} \033[0m| {result.info}\n"
-    ret += "+------+------+-----+\n"
-    ret += "| " + f"points: {submission_result.points}".center(17) + " |\n"
-    ret += "+------+------+-----+"
-    return ret
-
-
 def fetch_data(url: str, dst_path: str, timeout: int) -> None:
     print(f"Fetching: '{url}' -> '{dst_path}'")
     response = urllib.request.urlopen(url, timeout=timeout)
@@ -296,11 +277,7 @@ def run_containers(
         print(f"Error while getting results: {e}")
         return None
 
-    try:
-        res = print_results(result)
-        print(res)
-    except Exception as e:
-        print(f"Error while printing results: {e}")
+    print(result)
     return result
 
 

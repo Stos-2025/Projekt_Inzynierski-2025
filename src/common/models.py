@@ -15,6 +15,24 @@ class SubmissionResult(BaseModel):
     points: int = 0
     info: str = ""
     test_results: List[TestResult] = []
+    
+    def __str__(self) -> str:
+        ret = ""
+        ret += "+------+------+-----+\n"
+        ret += "| name | time | ret |\n"
+        ret += "+------+------+-----+\n"
+        for result in self.test_results:
+            color = 131
+            if result.grade:
+                color = 65
+            if result.ret_code != 0:
+                color = 173
+            ret += f"|\033[48;5;{color}m\033[38;5;232m {result.test_name:>4} |"
+            ret += f"{result.time:.2f} | {result.ret_code:>3} \033[0m| {result.info}\n"
+        ret += "+------+------+-----+\n"
+        ret += "| " + f"points: {self.points}".center(17) + " |\n"
+        ret += "+------+------+-----+"
+        return ret
 
 
 class Test(BaseModel):
