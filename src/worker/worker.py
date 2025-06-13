@@ -1,9 +1,9 @@
 import os
 import io
 import json
-import shutil
 import time
 import docker
+import shutil
 import signal
 import zipfile
 import requests
@@ -145,14 +145,10 @@ def process_submission() -> bool:
     print(f"Running submission {submission_dto.id}")
 
     init_worker_files()
-
-    tests_path = r"tmp/tests"
-    problem_local_path: str = os.path.join(DATA_LOCAL_PATH, tests_path)
-    problem_host_path: str = os.path.join(DATA_HOST_PATH, tests_path)
-
-    src_path = r"tmp/src"
-    submission_local_path: str = os.path.join(DATA_LOCAL_PATH, src_path)
-    submission_host_path: str = os.path.join(DATA_HOST_PATH, src_path)
+    problem_local_path: str = os.path.join(DATA_LOCAL_PATH, "tmp/tests")
+    problem_host_path: str = os.path.join(DATA_HOST_PATH, "tmp/tests")
+    submission_local_path: str = os.path.join(DATA_LOCAL_PATH, "tmp/src")
+    submission_host_path: str = os.path.join(DATA_HOST_PATH, "tmp/src")
 
     try:
         fetch_data(submission_dto.submissions_url, submission_local_path, FETCH_TIMEOUT)
@@ -186,11 +182,9 @@ def run_containers(
     src_path = os.path.join(submission_path, "src")
     tests_in_path = os.path.join(tests_path, "in")
     tests_out_path = os.path.join(tests_path, "out")
-
-    artifacts_path = DATA_HOST_PATH
-    artifacts_bin_path = os.path.join(artifacts_path, "bin")
-    artifacts_std_path = os.path.join(artifacts_path, "std")
-    artifacts_out_path = os.path.join(artifacts_path, "out")
+    artifacts_bin_path = os.path.join(DATA_HOST_PATH, "bin")
+    artifacts_std_path = os.path.join(DATA_HOST_PATH, "std")
+    artifacts_out_path = os.path.join(DATA_HOST_PATH, "out")
 
     mainfile = mainfile or "main.py"
     comp_image: str = PYTHON_COMP_IMAGE if compiler == "python3" else GPP_COMP_IMAGE
@@ -218,7 +212,7 @@ def run_containers(
         )
         container.wait(timeout=CONTAINERS_TIMEOUT)
     except Exception as e:
-        print(f"Error while compiling: {e}")
+        print(f"Error while running compiler container: {e}")
         return None
     try:
         container = client.containers.run(
@@ -244,7 +238,7 @@ def run_containers(
         )
         container.wait(timeout=CONTAINERS_TIMEOUT)
     except Exception as e:
-        print(f"Error while executing: {e}")
+        print(f"Error while running execution container: {e}")
         return None
     try:
         container = client.containers.run(
@@ -268,7 +262,7 @@ def run_containers(
         )
         container.wait(timeout=CONTAINERS_TIMEOUT)
     except Exception as e:
-        print(f"Error while judging: {e}")
+        print(f"Error while running judge container: {e}")
         return None
 
     try:
