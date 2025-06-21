@@ -6,6 +6,8 @@ import time
 import docker
 import signal
 import zipfile
+import docker.models
+import docker.models.containers
 import requests
 import urllib.request
 from types import FrameType
@@ -197,7 +199,7 @@ def run_containers(
 
     client = docker.from_env()
     try:
-        container = client.containers.run(
+        container: docker.models.containers.Container = client.containers.run( # type: ignore
             image=comp_image,
             detach=True,
             remove=True,
@@ -221,7 +223,7 @@ def run_containers(
         print(f"Error while compiling: {e}")
         return None
     try:
-        container = client.containers.run(
+        container: docker.models.containers.Container = client.containers.run( # type: ignore
             image=EXEC_IMAGE,
             detach=True,
             remove=True,
@@ -247,7 +249,7 @@ def run_containers(
         print(f"Error while executing: {e}")
         return None
     try:
-        container = client.containers.run(
+        container: docker.models.containers.Container = client.containers.run(  # type: ignore
             image=JUDGE_IMAGE,
             detach=True,
             remove=True,

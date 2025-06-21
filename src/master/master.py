@@ -6,9 +6,11 @@ from fastapi import FastAPI, HTTPException, Request
 from common.models import Submission, SubmissionResult
 
 submissions: Dict[str, Submission] = {}
+
 pending: List[str] = []
 running: List[str] = []
 completed: List[str] = []
+
 lock = threading.Lock()
 master_app = FastAPI()
 
