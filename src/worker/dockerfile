@@ -1,6 +1,6 @@
 FROM alpine:3.21
 
-
+# setting up working directory
 WORKDIR /app
 
 
@@ -33,11 +33,11 @@ USER stos:stos
 ENV MASTER_URL=http://master:80
 ENV WORKERS_DATA_LOCAL_PATH=/workers
 ENV WORKERS_DATA_HOST_PATH=/home/damian/Projekty/Projekt_Inzynierski-2025/stos-files/workers
-ENV GPP_COMP_IMAGE_NAME=d4m14n/stos:gpp_comp-latest
-ENV PYTHON_COMP_IMAGE_NAME=d4m14n/stos:python3_comp-latest
+
 ENV EXEC_IMAGE_NAME=d4m14n/stos:exec-latest
 ENV JUDGE_IMAGE_NAME=d4m14n/stos:judge-latest
+ENV LANG_COMPILER_DICT='{"cpp": "d4m14n/stos:gpp_comp-latest", "python": "d4m14n/stos:python3_comp-latest"}'
 
 
+# setting up entrypoint
 ENTRYPOINT ["python3", "-u" , "worker.py"]
-#docker build -t stos_worker ./src/worker

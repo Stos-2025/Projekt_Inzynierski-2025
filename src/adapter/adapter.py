@@ -1,4 +1,5 @@
 import io
+import json
 import re
 import signal
 import time
@@ -8,6 +9,7 @@ import requests
 import os
 import zipfile
 from uuid import uuid4
+from common.dtos import CreateSubmissionDto
 from common.models import SubmissionResult
 
 
@@ -228,16 +230,20 @@ Compiling...Running...OK
 
 
 def run_submission() -> None:
-    gui_url = os.getenv("GUI_URL")
-    queue_names = os.getenv("QUEUE_NAMES").split(",") # type: ignore
-    qurl = f"{gui_url}/qapi/qctrl.php"
-    fsurl = f"{gui_url}/fsapi/fsctrl.php"
-    shared_path = "/shared"
+    GUI_URL = os.environ["GUI_URL"]
+    QUEUE_NAMES = os.environ["QUEUE_NAMES"].split(",")
+    QUEUE_LANG_DICT: Dict[str, str] = json.loads(os.environ["QUEUE_LANG_DICT"])
 
-    # fetching the submission
-    for queue_name in queue_names:
+    QURL = os.path.join(GUI_URL, "qapi/qctrl.php")
+    FSURL = os.path.join(GUI_URL, "fsapi/fsctrl.php")
+    SHARED_PATH = "/shared"
+
+
+    for queue_name in QUEUE_NAMES:
+        # fetching the submission
         try:
-            problem_id, _, submission_id, mainfile = fetch_submission(qurl, f"{shared_path}/submissions", queue_name)
+            destination_path = os.path.join(SHARED_PATH, "submissions")
+            problem_id, _, submission_id, mainfile = fetch_submission(QURL, destination_path, queue_name)
         except FileNotFoundError:
             continue
         except Exception as e:
@@ -246,21 +252,19 @@ def run_submission() -> None:
 
         # fetching the problem tests
         try:
-            fetch_problem(fsurl, f"{shared_path}/problems", problem_id)
+            fetch_problem(FSURL, f"{SHARED_PATH}/problems", problem_id)
         except Exception as e:
             print(f"An error occurred while fetching the problem: {e}")
             return
     
-
         # running the submission
-        compiler: str = "python3" if queue_name == "stos2025-python" else "gpp"
-        params: Dict[str, Any] = {
-            'task_url': f"file:///shared/problems/{problem_id}/tests.zip",
-            'submission_url': f"file:///shared/submissions/{submission_id}/src.zip",
-            'compiler': compiler,
-            'mainfile': mainfile
-        }
-        requests.put(f"{os.getenv('MASTER_URL')}/submissions/{submission_id}", params=params)
+        submission = CreateSubmissionDto(
+            task_url = f"file:///shared/problems/{problem_id}/tests.zip",
+            submission_url = f"file:///shared/submissions/{submission_id}/src.zip",
+            lang = QUEUE_LANG_DICT[queue_name],
+            mainfile = mainfile
+        )
+        requests.put(f"{os.getenv('MASTER_URL')}/submissions/{submission_id}", json=submission.model_dump())
 
 
 def handle_signal(signum: int, frame: Optional[FrameType]) -> None:

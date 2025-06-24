@@ -12,23 +12,23 @@ import requests
 import urllib.request
 from types import FrameType
 from natsort import natsorted
-from typing import List, Optional
+from typing import Dict, List, Optional
 from common.dtos import SubmissionWorkerDto
 from common.models import SubmissionResult, TestResult
 
 
 FETCH_TIMEOUT = 5  # seconds
 POOLING_INTERVAL = 100e-3  # seconds
-MASTER_URL: str = os.environ["MASTER_URL"]
-EXEC_IMAGE: str = os.environ["EXEC_IMAGE_NAME"]
-JUDGE_IMAGE: str = os.environ["JUDGE_IMAGE_NAME"]
-GPP_COMP_IMAGE: str = os.environ["GPP_COMP_IMAGE_NAME"]
-PYTHON_COMP_IMAGE: str = os.environ["PYTHON_COMP_IMAGE_NAME"]
+CONTAINERS_TIMEOUT = 300
+CONTAINERS_MEMORY_LIMIT = "512m"
 HOSTNAME: str = os.environ["HOSTNAME"]
+MASTER_URL: str = os.environ["MASTER_URL"]
 DATA_LOCAL_PATH = os.path.join(os.environ["WORKERS_DATA_LOCAL_PATH"], HOSTNAME)
 DATA_HOST_PATH = os.path.join(os.environ["WORKERS_DATA_HOST_PATH"], HOSTNAME)
-CONTAINERS_MEMORY_LIMIT = "512m"
-CONTAINERS_TIMEOUT = 300
+
+EXEC_IMAGE: str = os.environ["EXEC_IMAGE_NAME"]
+JUDGE_IMAGE: str = os.environ["JUDGE_IMAGE_NAME"]
+LANG_COMPILER_DICT: Dict[str, str] = json.loads(os.environ["LANG_COMPILER_DICT"])
 
 
 def handle_signal(signum: int, frame: Optional[FrameType]) -> None:
@@ -168,7 +168,7 @@ def process_submission() -> bool:
     result: Optional[SubmissionResult] = run_containers(
         submission_host_path,
         problem_host_path,
-        submission_dto.compiler,
+        submission_dto.lang,
         submission_dto.mainfile,
     )
     report_result(submission_dto.id, result)
@@ -178,19 +178,22 @@ def process_submission() -> bool:
 def run_containers(
     submission_path: str,
     tests_path: str,
-    compiler: Optional[str] = "gpp",
+    lang: str,
     mainfile: Optional[str] = "main.py",
 ) -> Optional[SubmissionResult]:
+    if lang not in LANG_COMPILER_DICT:
+        result = SubmissionResult(info=f"Language '{lang}' is not supported")
+        print(result.info)
+        return result
+    
+    mainfile = mainfile or "main.py"
+    comp_image = LANG_COMPILER_DICT[lang]
     src_path = os.path.join(submission_path, "src")
     tests_in_path = os.path.join(tests_path, "in")
     tests_out_path = os.path.join(tests_path, "out")
     artifacts_bin_path = os.path.join(DATA_HOST_PATH, "bin")
     artifacts_std_path = os.path.join(DATA_HOST_PATH, "std")
     artifacts_out_path = os.path.join(DATA_HOST_PATH, "out")
-
-    mainfile = mainfile or "main.py"
-    comp_image: str = PYTHON_COMP_IMAGE if compiler == "python3" else GPP_COMP_IMAGE
-
     client = docker.from_env()
     try:
         container: docker.models.containers.Container = client.containers.run( # type: ignore

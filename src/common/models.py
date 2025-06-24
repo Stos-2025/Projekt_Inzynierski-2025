@@ -1,5 +1,13 @@
+from enum import Enum
 from pydantic import BaseModel
 from typing import List, Optional
+
+
+class SubmissionStatus(Enum):
+    NONE = 0
+    PENDING = 1
+    RUNNING = 2
+    COMPLETED = 3
 
 
 class TestResult(BaseModel):
@@ -47,10 +55,11 @@ class Problem(BaseModel):
 
 class Submission(BaseModel):
     id: str
-    status: str
+    status: SubmissionStatus = SubmissionStatus.NONE
     task_url: str
     submissions_url: str
-    compiler: Optional[str] = None
+    lang: str
     mainfile: Optional[str] = None
-    result: Optional[SubmissionResult] = SubmissionResult()
+    result: Optional[SubmissionResult] = None
     problem: Optional[Problem] = None
+    submission_timestamp: Optional[float] = None
