@@ -43,14 +43,14 @@ class SubmissionResult(BaseModel):
         return ret
 
 
-class Test(BaseModel):
+class TestSpecification(BaseModel):
     test_name: str = ""
     time_limit: float = 2
 
 
-class Problem(BaseModel):
-    id: str
-    tests: List[Test] = []
+class ProblemSpecification(BaseModel):
+    id: Optional[str]
+    tests: List[TestSpecification] = []
 
 
 class Submission(BaseModel):
@@ -61,5 +61,6 @@ class Submission(BaseModel):
     lang: str
     mainfile: Optional[str] = None
     result: Optional[SubmissionResult] = None
-    problem: Optional[Problem] = None
+    
+    problem_specification: Optional[ProblemSpecification] = None
     submission_timestamp: Optional[float] = None

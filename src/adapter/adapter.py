@@ -1,6 +1,5 @@
 import io
 import json
-import re
 import signal
 import time
 from types import FrameType
@@ -10,8 +9,8 @@ import os
 import zipfile
 from uuid import uuid4
 from common.dtos import CreateSubmissionDto
-from common.models import SubmissionResult
-
+from common.models import ProblemSpecification, SubmissionResult, TestSpecification
+import script_parser as sp 
 
 def fetch_submission(url: str, submission_directory_path: str, queue: str="stosvs") -> Tuple[str, str, str, str]:
     params = {
@@ -88,19 +87,25 @@ def get_file(url: str, destination_path: str, file_name: str, problem_id: str, a
     else:
         raise Exception(f"The request failed. Status code: {response.status_code}")
 
-def parse_script(script_path: str) -> None:
-    results = []
-    with open(script_path, 'r', encoding='utf-8') as file:
-        for line in file:
-            if line.startswith("TST"):
-                match = re.match(r'^TST(?: \S+)? \S+ (\d+).*(\S+\.in)$', line)
-                if match:
-                    time_val = int(match.group(1))
-                    input_file = match.group(2)
-                    results.append((time_val, input_file)) # type: ignore
-    print(results) # type: ignore
+def parse_script(script_path: str) -> List[TestSpecification]:
+    script_content = ""
+    with open(script_path, "r") as script_file:
+        script_content = script_file.read()
+    if not script_content:
+        raise ValueError("Script file is empty")
 
-def fetch_problem(url: str, problem_directory_path: str, problem_id: str) -> None:
+    result, _ = sp.parse_problem_script(script_content) # type: ignore
+    tests: List[TestSpecification] = []
+    for _, value in result.items():
+        test = TestSpecification(
+            test_name=str(value.get("input")).replace(".in", ""),
+            time_limit=value.get("time") # type: ignore
+        )
+        tests.append(test)
+    return tests
+
+
+def fetch_problem(url: str, problem_directory_path: str, problem_id: str) -> Optional[ProblemSpecification]:
     problem_directory_path = f'{problem_directory_path}/{problem_id}'
     problem_tests_zip_path = f"{problem_directory_path}/tests.zip"
     os.system(f"mkdir -p {problem_directory_path}")
@@ -108,11 +113,13 @@ def fetch_problem(url: str, problem_directory_path: str, problem_id: str) -> Non
     os.system(f"mkdir -p {problem_directory_path}/tmp/in")
     os.system(f"mkdir -p {problem_directory_path}/tmp/out")
     os.system(f"mkdir -p {problem_directory_path}/tmp/other")
+    
     try:
         file_list = list(url, problem_id)
     except Exception as e:
         print(f"An error occurred while listing files: {e}")
         return
+    
     try:
         with zipfile.ZipFile(problem_tests_zip_path, 'w') as tests_zip:
             for line in file_list.splitlines():
@@ -127,13 +134,24 @@ def fetch_problem(url: str, problem_directory_path: str, problem_id: str) -> Non
                 elif file_name == "script.txt":
                     get_file(url, f"{problem_directory_path}/tmp/other/{file_name}", file_name, problem_id)
                     tests_zip.write(f"{problem_directory_path}/tmp/other/{file_name}", f"other/{file_name}")
-        # todo: uncomment this line to remove tmp directory after zipping
-        # os.system(f"rm -rf {problem_directory_path}/tmp")
-        # parse_script(f"{problem_directory_path}/tmp/other/script.txt")
-
     except Exception as e:
         print(f"An error occurred while fetching files: {e}")
         return
+    
+    # parsing the script
+    problem_specification = None
+    try: 
+        tests = parse_script(f"{problem_directory_path}/tmp/other/script.txt")
+        problem_specification = ProblemSpecification(
+            id=problem_id,
+            tests=tests
+        )
+    except Exception as e:
+        print(f"An error occurred while parsing the script: {e}")
+    
+    os.system(f"rm -rf {problem_directory_path}/tmp")
+    return problem_specification
+
 
 
 
@@ -251,8 +269,9 @@ def run_submission() -> None:
             return
 
         # fetching the problem tests
+        problem_specification: Optional[ProblemSpecification] = None
         try:
-            fetch_problem(FSURL, f"{SHARED_PATH}/problems", problem_id)
+            problem_specification = fetch_problem(FSURL, f"{SHARED_PATH}/problems", problem_id)
         except Exception as e:
             print(f"An error occurred while fetching the problem: {e}")
             return
@@ -262,7 +281,8 @@ def run_submission() -> None:
             task_url = f"file:///shared/problems/{problem_id}/tests.zip",
             submission_url = f"file:///shared/submissions/{submission_id}/src.zip",
             lang = QUEUE_LANG_DICT[queue_name],
-            mainfile = mainfile
+            mainfile = mainfile,
+            problem_specification = problem_specification
         )
         requests.put(f"{os.getenv('MASTER_URL')}/submissions/{submission_id}", json=submission.model_dump())
 

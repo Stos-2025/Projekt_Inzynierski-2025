@@ -26,21 +26,21 @@ services:
       mode: replicated
       replicas: 3
      
-  # adapter:
-  #   image: stos_adapter
-  #   restart: always
-  #   depends_on:
-  #     - master
-  #   build:
-  #     context: ..
-  #     dockerfile: adapter/dockerfile
-  #   volumes:
-  #     - ${STOS_FILES}/shared:/shared:rw
-  #   environment:
-  #     - MASTER_URL=http://master:80
-  #     - GUI_URL=${GUI_URL}
-  #     - QUEUE_NAMES=${QUEUE_NAMES}
-  #     - LANG_COMPILER_DICT=${LANG_COMPILER_DICT}
+  adapter:
+    image: stos_adapter
+    restart: always
+    depends_on:
+      - master
+    build:
+      context: ..
+      dockerfile: adapter/dockerfile
+    volumes:
+      - ${STOS_FILES}/shared:/shared:rw
+    environment:
+      - MASTER_URL=http://master:80
+      - GUI_URL=${GUI_URL}
+      - QUEUE_NAMES=${QUEUE_NAMES}
+      - LANG_COMPILER_DICT=${LANG_COMPILER_DICT}
 
   master:
     image: stos_master

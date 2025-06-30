@@ -1,6 +1,6 @@
 from typing import Optional
 from pydantic import BaseModel
-from common.models import Submission
+from common.models import ProblemSpecification, Submission
 
 
 class SubmissionWorkerDto(BaseModel):
@@ -9,6 +9,7 @@ class SubmissionWorkerDto(BaseModel):
     submissions_url: str
     lang: str
     mainfile: Optional[str] = None
+    problem_specification: Optional[ProblemSpecification] = None
     
     @staticmethod
     def from_submission(submission: Submission) -> "SubmissionWorkerDto":
@@ -17,7 +18,8 @@ class SubmissionWorkerDto(BaseModel):
             task_url=submission.task_url,
             submissions_url=submission.submissions_url,
             mainfile=submission.mainfile,
-            lang=submission.lang
+            lang=submission.lang,
+            problem_specification=submission.problem_specification
         )
         return submission_worker
     
@@ -27,6 +29,7 @@ class CreateSubmissionDto(BaseModel):
     submission_url: str = r"file:///shared/examples/0/src.zip"
     lang: str
     mainfile: Optional[str] = None
+    problem_specification: Optional[ProblemSpecification] = None
 
     @staticmethod
     def toSubmission(id: str, submission_dto: "CreateSubmissionDto") -> Submission:
@@ -35,5 +38,6 @@ class CreateSubmissionDto(BaseModel):
             task_url=submission_dto.task_url,
             submissions_url=submission_dto.submission_url,
             lang=submission_dto.lang,
-            mainfile=submission_dto.mainfile
+            mainfile=submission_dto.mainfile,
+            problem_specification=submission_dto.problem_specification
         )
