@@ -46,7 +46,8 @@ class SubmissionResult(BaseModel):
 class TestSpecification(BaseModel):
     test_name: str = ""
     time_limit: float = 2
-
+    total_memory_limit: int = 256*1024*1024  # 256 MB
+    stack_size_limit: Optional[int] = None
 
 class ProblemSpecification(BaseModel):
     id: Optional[str]

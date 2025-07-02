@@ -21,11 +21,13 @@ def fetch_submission(url: str, submission_directory_path: str, queue: str="stosv
     mainfile = ""
     if response.status_code == 200:
         problem_id = response.headers.get('X-Param').split(";")[0] # type: ignore
+        student_id = response.headers.get('X-Param').split(";")[1] # type: ignore
         server_id = response.headers.get('X-Server-Id')
         content = response.content
         # print(f"Headers: {response.headers}")
         # print(f"Data: {content}...")
         print(f"Server ID: {server_id}")
+        print(f"Student ID: {student_id}")
         print(f"Problem ID: {problem_id}")
         print(f"Queue: {queue}")
         
@@ -37,12 +39,9 @@ def fetch_submission(url: str, submission_directory_path: str, queue: str="stosv
             file_list = zip_ref.infolist()
             if file_list:
                 mainfile = file_list[0].filename
-            zip_ref.extractall(f"{src_directory_path}/tmp/src")
-        
-        
-        with zipfile.ZipFile(f"{src_directory_path}/src.zip", 'w') as new_zip:
-            for file in os.listdir(f"{src_directory_path}/tmp/src"):
-                new_zip.write(f"{src_directory_path}/tmp/src/{file}", f"src/{file}")
+            zip_file_path = f"{src_directory_path}/src.zip"
+            with open(zip_file_path, 'wb') as zip_file:
+                zip_file.write(content)
 
         print(f"Mainfile: {mainfile}")
         os.system(f"rm -rf {src_directory_path}/tmp")
@@ -87,6 +86,7 @@ def get_file(url: str, destination_path: str, file_name: str, problem_id: str, a
     else:
         raise Exception(f"The request failed. Status code: {response.status_code}")
 
+
 def parse_script(script_path: str) -> List[TestSpecification]:
     script_content = ""
     with open(script_path, "r") as script_file:
@@ -127,13 +127,12 @@ def fetch_problem(url: str, problem_directory_path: str, problem_id: str) -> Opt
                 file_name = line.split(':')[0]
                 if file_name.endswith(".in"):
                     get_file(url, f"{problem_directory_path}/tmp/in/{file_name}", file_name, problem_id)
-                    tests_zip.write(f"{problem_directory_path}/tmp/in/{file_name}", f"in/{file_name}")
+                    tests_zip.write(f"{problem_directory_path}/tmp/in/{file_name}", file_name)
                 elif file_name.endswith(".out"):
                     get_file(url, f"{problem_directory_path}/tmp/out/{file_name}", file_name, problem_id)
-                    tests_zip.write(f"{problem_directory_path}/tmp/out/{file_name}", f"out/{file_name}")
+                    tests_zip.write(f"{problem_directory_path}/tmp/out/{file_name}", file_name)
                 elif file_name == "script.txt":
                     get_file(url, f"{problem_directory_path}/tmp/other/{file_name}", file_name, problem_id)
-                    tests_zip.write(f"{problem_directory_path}/tmp/other/{file_name}", f"other/{file_name}")
     except Exception as e:
         print(f"An error occurred while fetching files: {e}")
         return
@@ -151,8 +150,6 @@ def fetch_problem(url: str, problem_directory_path: str, problem_id: str) -> Opt
     
     os.system(f"rm -rf {problem_directory_path}/tmp")
     return problem_specification
-
-
 
 
 def report_result(url: str, server_id: str, result: SubmissionResult) -> None:
@@ -179,13 +176,26 @@ f"""
         border-radius: 5px; 
         overflow: hidden;
     }}
-    th, td {{ 
-        border: 1px solid #202020; padding: 3px 10px; text-align: center; 
+    th {{ 
+        border: 1px solid #202020; 
+        padding: 4px 10px; 
+        background-color: #d8d8d8; 
+        max-width: 350px;
     }}
-    th {{ background-color: #d8d8d8; }}
+    td {{
+        border-left: 1px solid #202020; 
+        border-right: 1px solid #202020; 
+        padding: 4px 10px; 
+        max-width: 350px;
+        white-space: nowrap;
+        overflow: hidden;
+    }}
+    tr:hover td {{
+    }}
+    tbody tr:nth-child(even) {{ filter: brightness(95%); }}
     .success {{ background-color: #6fb65d; }}
     .failure {{ background-color: #b65d62; }}
-    .error {{ background-color: #ffad5c; }}
+    .eerror {{ background-color: #e69c53; }}
 
     .my-section {{ 
         background-color: #f0f0f0;
@@ -197,17 +207,12 @@ f"""
     }}
 </style>
 <section class='my-section'>
-    Execution finished.
-    <br>
     <b>Score:</b> {score}
 </section>
 """
-    
     if len(result.test_results) != 0:
         info_content += \
 f"""
-<b>Tests:</b>
-<br>
 <div style="background-color: #202020; border-radius: 5px; width: fit-content;">
     <table>
         <tr>
@@ -217,7 +222,7 @@ f"""
             <th>Maxrss [kB]</th>
             <th>Info</th>
         </tr>
-        {''.join(f"<tr class='{'success' if test.grade else 'failure'}'><td>{test.test_name}</td><td>{test.ret_code}</td><td>{test.time:.2f}</td><td>{test.memory:.0f}</td><td>{test.info}</td></tr>" for test in result.test_results)}
+        {''.join(f"<tr class='{'success' if test.grade else ('failure' if test.ret_code >= 0 else 'eerror')}'><td>{test.test_name}</td><td>{test.ret_code if test.ret_code >= 0 else ''}</td><td>{test.time:.2f}</td><td>{test.memory:.0f}</td><td>{test.info}</td></tr>" for test in result.test_results)}
     </table>
 </div>
 <br>

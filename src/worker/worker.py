@@ -14,7 +14,7 @@ from types import FrameType
 from natsort import natsorted
 from typing import Dict, List, Optional
 from common.dtos import SubmissionWorkerDto
-from common.models import SubmissionResult, TestResult
+from common.models import ProblemSpecification, SubmissionResult, TestResult
 
 
 FETCH_TIMEOUT = 5  # seconds
@@ -90,7 +90,7 @@ def get_results(path: str) -> SubmissionResult:
     return submission_result
 
 
-def fetch_data(url: str, dst_path: str, timeout: int) -> None:
+def fetch_zip_data(url: str, dst_path: str, timeout: int) -> None:
     print(f"Fetching: '{url}' -> '{dst_path}'")
     response = urllib.request.urlopen(url, timeout=timeout)
     zip_data = io.BytesIO(response.read())
@@ -132,6 +132,7 @@ def init_worker_files() -> None:
     os.makedirs(os.path.join(DATA_LOCAL_PATH, "bin"))
     os.makedirs(os.path.join(DATA_LOCAL_PATH, "std"))
     os.makedirs(os.path.join(DATA_LOCAL_PATH, "out"))
+    os.makedirs(os.path.join(DATA_LOCAL_PATH, "conf", ))
     os.makedirs(os.path.join(DATA_LOCAL_PATH, "tmp"))
 
 
@@ -153,13 +154,22 @@ def process_submission() -> bool:
     submission_host_path: str = os.path.join(DATA_HOST_PATH, "tmp/src")
 
     try:
-        fetch_data(submission_dto.submissions_url, submission_local_path, FETCH_TIMEOUT)
+        if submission_dto.problem_specification:
+            problem_specification_path = os.path.join(DATA_LOCAL_PATH, "conf", "problem_specification.json")
+            with open(problem_specification_path, "w") as f:
+                json.dump(submission_dto.problem_specification.model_dump(), f)
+            print(f"Problem specification saved to {problem_specification_path}")
+    except Exception as e:
+        print(f"Error while saving problem specification: {e}")
+    
+    try:
+        fetch_zip_data(submission_dto.submissions_url, submission_local_path, FETCH_TIMEOUT)
     except Exception as e:
         print(f"Error while fetching submission data: {e}")
         return True
 
     try:
-        fetch_data(submission_dto.task_url, problem_local_path, FETCH_TIMEOUT)
+        fetch_zip_data(submission_dto.task_url, problem_local_path, FETCH_TIMEOUT)
     except Exception as e:
         print(f"Error while fetching problem data: {e}")
         return True
@@ -180,6 +190,7 @@ def run_containers(
     tests_path: str,
     lang: str,
     mainfile: Optional[str] = "main.py",
+    problem_specification: Optional[ProblemSpecification] = None,
 ) -> Optional[SubmissionResult]:
     if lang not in LANG_COMPILER_DICT:
         result = SubmissionResult(info=f"Language '{lang}' is not supported")
@@ -188,9 +199,7 @@ def run_containers(
     
     mainfile = mainfile or "main.py"
     comp_image = LANG_COMPILER_DICT[lang]
-    src_path = os.path.join(submission_path, "src")
-    tests_in_path = os.path.join(tests_path, "in")
-    tests_out_path = os.path.join(tests_path, "out")
+    conf_path = os.path.join(DATA_HOST_PATH, "conf")
     artifacts_bin_path = os.path.join(DATA_HOST_PATH, "bin")
     artifacts_std_path = os.path.join(DATA_HOST_PATH, "std")
     artifacts_out_path = os.path.join(DATA_HOST_PATH, "out")
@@ -210,7 +219,7 @@ def run_containers(
                 "MAINFILE": mainfile,
             },
             volumes={
-                src_path: {"bind": "/data/src", "mode": "ro"},
+                submission_path: {"bind": "/data/src", "mode": "ro"},
                 artifacts_bin_path: {"bind": "/data/bin", "mode": "rw"},
                 artifacts_out_path: {"bind": "/data/out", "mode": "rw"},
             },
@@ -233,9 +242,11 @@ def run_containers(
                 "OUT": "/data/out",
                 "STD": "/data/std",
                 "BIN": "/data/bin",
+                "CONF": "/data/conf",
             },
             volumes={
-                tests_in_path: {"bind": "/data/in", "mode": "ro"},
+                tests_path: {"bind": "/data/in", "mode": "ro"},
+                conf_path: {"bind": "/data/conf", "mode": "ro"},
                 artifacts_bin_path: {"bind": "/data/bin", "mode": "ro"},
                 artifacts_std_path: {"bind": "/data/std", "mode": "rw"},
                 artifacts_out_path: {"bind": "/data/out", "mode": "rw"},
@@ -260,7 +271,7 @@ def run_containers(
                 "ANS": "/data/ans",
             },
             volumes={
-                tests_out_path: {"bind": "/data/ans", "mode": "ro"},
+                tests_path: {"bind": "/data/ans", "mode": "ro"},
                 artifacts_std_path: {"bind": "/data/in", "mode": "ro"},
                 artifacts_out_path: {"bind": "/data/out", "mode": "rw"},
             },
