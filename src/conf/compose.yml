@@ -51,6 +51,7 @@ services:
       dockerfile: master/dockerfile
     environment:
       - WORKER_URLS=http://worker:80
+    # development only
     ports:
       - 8080:80
 
