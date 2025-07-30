@@ -1,7 +1,7 @@
 FROM alpine:3.21
 
 RUN apk add --no-cache python3 py3-pip
-RUN pip install --break-system-packages requests pydantic
+RUN pip install --break-system-packages requests pydantic ansi2html
 
 RUN addgroup -S stos
 RUN adduser -S stos -G stos
@@ -13,7 +13,7 @@ ENV QUEUE_LANG_DICT='{"stos2025": "cpp", "stos2025-python": "python"}'
 WORKDIR /app
 COPY adapter/adapter.py .
 COPY adapter/script_parser.py .
-COPY common/ ./common/
+COPY common/*.py ./common/
 
 
 USER stos:stos

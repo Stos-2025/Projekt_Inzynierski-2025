@@ -8,11 +8,13 @@ import requests
 import os
 import zipfile
 from uuid import uuid4
-from common.dtos import CreateSubmissionDto
-from common.models import ProblemSpecification, SubmissionResult, TestSpecification
+from common.schemas import ProblemSpecificationSchema, SubmissionCreateSchema, SubmissionResultSchema, TestSpecificationSchema
 import script_parser as sp 
+import ansi2html
 
-def fetch_submission(url: str, submission_directory_path: str, queue: str="stosvs") -> Tuple[str, str, str, str]:
+MASTER_API_KEY: str = os.environ["MASTER_API_KEY"]
+
+def fetch_submission(url: str, submission_directory_path: str, queue: str="stosvs") -> Tuple[str, str, str, str, str]:
     params = {
         "f": "get",
         "name": queue
@@ -31,7 +33,7 @@ def fetch_submission(url: str, submission_directory_path: str, queue: str="stosv
         print(f"Problem ID: {problem_id}")
         print(f"Queue: {queue}")
         
-        submission_id = f"{str(uuid4())}.{server_id}"
+        submission_id = f"adapter.{server_id}.{str(uuid4())}"
         src_directory_path = f'{submission_directory_path}/{submission_id}'
         os.system(f"mkdir -p {src_directory_path}/tmp/src")
          
@@ -53,10 +55,10 @@ def fetch_submission(url: str, submission_directory_path: str, queue: str="stosv
     if not server_id:
         raise ValueError("Invalid response from the server")
 
-    return problem_id, server_id, submission_id, mainfile
+    return problem_id, server_id, submission_id, student_id, mainfile
 
 
-def list(url: str, problem_id: str, area: int = 0) -> str:
+def list_problems_files(url: str, problem_id: str, area: int = 0) -> str:
     params: Dict[str, Any] = {
         "f": "list",
         "area": area, 
@@ -87,7 +89,7 @@ def get_file(url: str, destination_path: str, file_name: str, problem_id: str, a
         raise Exception(f"The request failed. Status code: {response.status_code}")
 
 
-def parse_script(script_path: str) -> List[TestSpecification]:
+def parse_script(script_path: str) -> List[TestSpecificationSchema]:
     script_content = ""
     with open(script_path, "r") as script_file:
         script_content = script_file.read()
@@ -95,9 +97,9 @@ def parse_script(script_path: str) -> List[TestSpecification]:
         raise ValueError("Script file is empty")
 
     result, _ = sp.parse_problem_script(script_content) # type: ignore
-    tests: List[TestSpecification] = []
+    tests: List[TestSpecificationSchema] = []
     for _, value in result.items():
-        test = TestSpecification(
+        test = TestSpecificationSchema(
             test_name=str(value.get("input")).replace(".in", ""),
             time_limit=value.get("time") # type: ignore
         )
@@ -105,7 +107,7 @@ def parse_script(script_path: str) -> List[TestSpecification]:
     return tests
 
 
-def fetch_problem(url: str, problem_directory_path: str, problem_id: str) -> Optional[ProblemSpecification]:
+def fetch_problem(url: str, problem_directory_path: str, problem_id: str) -> Optional[ProblemSpecificationSchema]:
     problem_directory_path = f'{problem_directory_path}/{problem_id}'
     problem_tests_zip_path = f"{problem_directory_path}/tests.zip"
     os.system(f"mkdir -p {problem_directory_path}")
@@ -115,7 +117,7 @@ def fetch_problem(url: str, problem_directory_path: str, problem_id: str) -> Opt
     os.system(f"mkdir -p {problem_directory_path}/tmp/other")
     
     try:
-        file_list = list(url, problem_id)
+        file_list = list_problems_files(url, problem_id)
     except Exception as e:
         print(f"An error occurred while listing files: {e}")
         return
@@ -141,7 +143,7 @@ def fetch_problem(url: str, problem_directory_path: str, problem_id: str) -> Opt
     problem_specification = None
     try: 
         tests = parse_script(f"{problem_directory_path}/tmp/other/script.txt")
-        problem_specification = ProblemSpecification(
+        problem_specification = ProblemSpecificationSchema(
             id=problem_id,
             tests=tests
         )
@@ -152,7 +154,7 @@ def fetch_problem(url: str, problem_directory_path: str, problem_id: str) -> Opt
     return problem_specification
 
 
-def report_result(url: str, server_id: str, result: SubmissionResult) -> None:
+def report_result(url: str, server_id: str, result: SubmissionResultSchema) -> None:
     if len(result.test_results) == 0:
         score = 0
     else:
@@ -178,37 +180,29 @@ f"""
     }}
     th {{ 
         border: 1px solid #202020; 
-        padding: 4px 10px; 
+        padding: 3px 10px; 
         background-color: #d8d8d8; 
         max-width: 350px;
     }}
     td {{
         border-left: 1px solid #202020; 
         border-right: 1px solid #202020; 
-        padding: 4px 10px; 
+        padding: 3px 10px; 
         max-width: 350px;
         white-space: nowrap;
         overflow: hidden;
     }}
     tr:hover td {{
     }}
-    tbody tr:nth-child(even) {{ filter: brightness(95%); }}
+    tbody tr:nth-child(even) {{ filter: brightness(90%); }}
     .success {{ background-color: #6fb65d; }}
     .failure {{ background-color: #b65d62; }}
     .eerror {{ background-color: #e69c53; }}
 
-    .my-section {{ 
-        background-color: #f0f0f0;
-        padding: 10px;
-        border-radius: 5px;
-        font-family: Arial, sans-serif;
-        border: 1px solid #ccc;
-        margin-bottom: 20px;
-    }}
 </style>
-<section class='my-section'>
-    <b>Score:</b> {score}
-</section>
+<b>Score:</b> {score:.2f}%
+<br>
+<br>
 """
     if len(result.test_results) != 0:
         info_content += \
@@ -225,14 +219,15 @@ f"""
         {''.join(f"<tr class='{'success' if test.grade else ('failure' if test.ret_code >= 0 else 'eerror')}'><td>{test.test_name}</td><td>{test.ret_code if test.ret_code >= 0 else ''}</td><td>{test.time:.2f}</td><td>{test.memory:.0f}</td><td>{test.info}</td></tr>" for test in result.test_results)}
     </table>
 </div>
-<br>
 """
         
-    if len(result.info) != 0:
-        infor_parsed = result.info.replace("\n", "<br>")
+    if result.info:
+        # info_parsed = result.info.replace('\n', '<br>').replace(' ', '&nbsp;')
+        converter = ansi2html.Ansi2HTMLConverter(inline=True)
+        info_parsed = converter.convert(result.info, full=False)
         info_content += \
 f"""
-    <section class="my-section">{infor_parsed}</section> 
+    <pre style='font-family: monospace;'>{info_parsed}</pre>
 """
         
     debug_content = \
@@ -266,7 +261,7 @@ def run_submission() -> None:
         # fetching the submission
         try:
             destination_path = os.path.join(SHARED_PATH, "submissions")
-            problem_id, _, submission_id, mainfile = fetch_submission(QURL, destination_path, queue_name)
+            problem_id, _, submission_id, author, mainfile = fetch_submission(QURL, destination_path, queue_name)
         except FileNotFoundError:
             continue
         except Exception as e:
@@ -274,7 +269,7 @@ def run_submission() -> None:
             return
 
         # fetching the problem tests
-        problem_specification: Optional[ProblemSpecification] = None
+        problem_specification: Optional[ProblemSpecificationSchema] = None
         try:
             problem_specification = fetch_problem(FSURL, f"{SHARED_PATH}/problems", problem_id)
         except Exception as e:
@@ -282,14 +277,15 @@ def run_submission() -> None:
             return
     
         # running the submission
-        submission = CreateSubmissionDto(
+        submission = SubmissionCreateSchema(
             task_url = f"file:///shared/problems/{problem_id}/tests.zip",
             submission_url = f"file:///shared/submissions/{submission_id}/src.zip",
             lang = QUEUE_LANG_DICT[queue_name],
             mainfile = mainfile,
+            submitted_by = author,
             problem_specification = problem_specification
         )
-        requests.put(f"{os.getenv('MASTER_URL')}/submissions/{submission_id}", json=submission.model_dump())
+        requests.put(f"{os.getenv('MASTER_URL')}/submissions/{submission_id}", json=submission.model_dump(), headers={"X-API-Key": MASTER_API_KEY})
 
 
 def handle_signal(signum: int, frame: Optional[FrameType]) -> None:
@@ -302,19 +298,20 @@ def report_completed_submission() -> None:
         raise ValueError("GUI_URL environment variable is not set")
     repurl = f"{gui_url}/io-result.php"
 
-    response = requests.get(f"{os.getenv("MASTER_URL")}/submissions/completed") # type: ignore
+    response = requests.get(f"{os.getenv('MASTER_URL')}/submissions-completed", headers={"X-API-Key": MASTER_API_KEY}) # type: ignore
     if response.status_code == 200:
         submission_ids: List[str] = response.json()["submission_ids"]
     else:
         return
 
     for submission_id in submission_ids:
-        if len(submission_id.split(".")) < 2:
+        if not submission_id.startswith("adapter") or len(submission_id.split(".")) != 3:
             continue
-        response = requests.delete(f"{os.getenv("MASTER_URL")}/submissions/{submission_id}") # type: ignore
+        response = requests.get(f"{os.getenv('MASTER_URL')}/submissions/{submission_id}/result", headers={"X-API-Key": MASTER_API_KEY}) # type: ignore
+        requests.patch(f"{os.getenv('MASTER_URL')}/submissions/{submission_id}/mark-as-reported", headers={"X-API-Key": MASTER_API_KEY})
         
         if response.status_code == 200:
-            result: SubmissionResult = SubmissionResult(**response.json()["result"])
+            result: SubmissionResultSchema = SubmissionResultSchema.model_validate(response.json())
             # print(response.json())
             print(f"Removed: {submission_id}")
             server_id = submission_id.split(".")[1]

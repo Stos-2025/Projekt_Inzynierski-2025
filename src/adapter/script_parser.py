@@ -51,6 +51,10 @@ def parse_problem_script(script: str) -> Tuple[Dict[int, Dict[str, Any]], List[s
                     rv[test_id]["fastheap"] = True
                     i += 1
                     continue
+                elif cmd[i] == "profile":
+                    rv[test_id]["profile"] = True
+                    i += 1
+                    continue
                 elif cmd[i].startswith("smem="):
                     rv[test_id]["static"] = int(cmd[i][5:])
                     i += 1
@@ -144,20 +148,19 @@ def parse_problem_script(script: str) -> Tuple[Dict[int, Dict[str, Any]], List[s
 if __name__ == "__main__":
     script = """
 ##STOS_AUTOMATIC_SCRIPT_1_4##
-##STOS_AUTOMATIC_SCRIPT_1_4##
 CU
-TST test.exe 500 262144 +info.txt program.out wsp0.in
-JUN judge.exe program.out wsp0.out wsp0.in info.txt %TESTID%
-TST test.exe 500 262144 +info.txt program.out wsp1.in
-JUN judge.exe program.out wsp1.out wsp1.in info.txt %TESTID%
-TST test.exe 500 262144 +info.txt program.out wsp2.in
-JUN judge.exe program.out wsp2.out wsp2.in info.txt %TESTID%
+TST(1) test.exe 500 262144 +info.txt program.out wsp0.in
+JUB(1) judge.exe program.out wsp0.out wsp0.in info.txt %TESTID%
+TST(2) fastheap test.exe 500 262144 +info.txt program.out wsp1.in
+JUB(2) judge.exe program.out wsp1.out wsp1.in info.txt %TESTID%
+TST(3) profile test.exe 500 262144 +info.txt program.out wsp2.in
+JUB(3) judge.exe program.out wsp2.out wsp2.in info.txt %TESTID%
 CO
-TST fastheap test.exe 500 262144 +info.txt program.out wsp3.in
-JUN judge.exe program.out wsp3.out wsp3.in info.txt %TESTID%
-TST fastheap test.exe 1000 262144 +info.txt program.out wsp4.in
-JUN judge.exe program.out wsp4.out wsp4.in info.txt %TESTID%
-TST fastheap test.exe 2000 262144 +info.txt program.out wsp5.in
+TST(4) fastheap test.exe 500 262144 +info.txt program.out wsp3.in
+JUB(4) judge.exe program.out wsp3.out wsp3.in info.txt %TESTID%
+TST(5) fastheap profile test.exe 1000 262144 +info.txt program.out wsp4.in
+JUB(5) judge.exe program.out wsp4.out wsp4.in info.txt %TESTID%
+TST fastheap test.exe 1500 262144 +info.txt program.out wsp5.in
 JUN judge.exe program.out wsp5.out wsp5.in info.txt %TESTID%
 TST fastheap test.exe 3000 262144 +info.txt program.out wsp6.in
 JUN judge.exe program.out wsp6.out wsp6.in info.txt %TESTID%

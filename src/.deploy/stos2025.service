@@ -1,0 +1,19 @@
+[Unit]
+Description=Stos2025 Docker Compose Service
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=simple
+WorkingDirectory=/srv/stos2025
+ExecStart=/usr/bin/docker compose -f /srv/stos2025/compose.yml up
+ExecStop=/usr/bin/docker compose -f /srv/stos2025/compose.yml down
+User=stos2025
+Group=stos2025
+
+Restart=always
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target
+

@@ -16,7 +16,7 @@ LABEL org.opencontainers.image.documentation="https://github.com/Stos-2025/Proje
 
 # coping files
 COPY worker/worker.py .
-COPY common/ ./common/
+COPY common/*.py ./common/
 
 
 # installing dependencies
@@ -31,6 +31,7 @@ USER stos:stos
 
 # setting up envs
 ENV MASTER_URL=http://master:80
+ENV MASTER_API_KEY=MASTER_API_KEY
 ENV WORKERS_DATA_LOCAL_PATH=/workers
 ENV WORKERS_DATA_HOST_PATH=/home/damian/Projekty/Projekt_Inzynierski-2025/stos-files/workers
 

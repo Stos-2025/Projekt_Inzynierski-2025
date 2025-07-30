@@ -13,18 +13,18 @@ import urllib.request
 from types import FrameType
 from natsort import natsorted
 from typing import Dict, List, Optional
-from common.dtos import SubmissionWorkerDto
-from common.models import ProblemSpecification, SubmissionResult, TestResult
+from common.schemas import SubmissionResultSchema, SubmissionWorkerSchema, TestResultSchema
 
 
 FETCH_TIMEOUT = 5  # seconds
 POOLING_INTERVAL = 100e-3  # seconds
 CONTAINERS_TIMEOUT = 300
 CONTAINERS_MEMORY_LIMIT = "512m"
-HOSTNAME: str = os.environ["HOSTNAME"]
+NAME: str = f"worker_{os.environ['HOSTNAME']}"
 MASTER_URL: str = os.environ["MASTER_URL"]
-DATA_LOCAL_PATH = os.path.join(os.environ["WORKERS_DATA_LOCAL_PATH"], HOSTNAME)
-DATA_HOST_PATH = os.path.join(os.environ["WORKERS_DATA_HOST_PATH"], HOSTNAME)
+MASTER_API_KEY: str = os.environ["MASTER_API_KEY"]
+DATA_LOCAL_PATH = os.path.join(os.environ["WORKERS_DATA_LOCAL_PATH"], NAME)
+DATA_HOST_PATH = os.path.join(os.environ["WORKERS_DATA_HOST_PATH"], NAME)
 
 EXEC_IMAGE: str = os.environ["EXEC_IMAGE_NAME"]
 JUDGE_IMAGE: str = os.environ["JUDGE_IMAGE_NAME"]
@@ -45,18 +45,21 @@ def main() -> None:
 
 
 # todo: change this fuction
-def get_debug(path: str) -> str:
+def get_debug(path: str) -> Optional[str]:
     INFO_LENGTH = 2000
     comp_file_path = os.path.join(path, "comp.txt")
-    with open(comp_file_path, "r") as comp_file:
-        content = comp_file.read(INFO_LENGTH)
-        if comp_file.read(1):
-            content += "<br/><br/>..."
-    return content
+    try:
+        with open(comp_file_path, "r") as comp_file:
+            content = comp_file.read(INFO_LENGTH)
+            if comp_file.read(1):
+                content += "..."
+    except Exception:
+        return None
+    return content if content else None
 
 
-def get_results(path: str) -> SubmissionResult:
-    submission_result = SubmissionResult()
+def get_results(path: str) -> SubmissionResultSchema:
+    submission_result = SubmissionResultSchema()
     submission_result.info = get_debug(path)
 
     points = 0
@@ -69,7 +72,7 @@ def get_results(path: str) -> SubmissionResult:
     for test_name in test_names:
         exec_file_path = os.path.join(path, f"{test_name}.exec.json")
         judge_file_path = os.path.join(path, f"{test_name}.judge.json")
-        test_result: TestResult = TestResult(test_name=test_name)
+        test_result: TestResultSchema = TestResultSchema(test_name=test_name)
 
         with open(exec_file_path, "r") as exec_file:
             exec = json.load(exec_file)
@@ -98,28 +101,28 @@ def fetch_zip_data(url: str, dst_path: str, timeout: int) -> None:
         zip_ref.extractall(dst_path)
 
 
-def fetch_submission() -> SubmissionWorkerDto:
+def fetch_submission() -> SubmissionWorkerSchema:
     submission_endpoint_url = f"{MASTER_URL}/worker/submission"
-    response = requests.post(submission_endpoint_url)
+    response = requests.post(submission_endpoint_url, headers={"X-API-Key": MASTER_API_KEY})
     if response.status_code == 404:
         raise FileNotFoundError("Submission not found")
     elif response.status_code != 200:
         raise Exception("Failed to fetch submission")
 
-    result: SubmissionWorkerDto = SubmissionWorkerDto.model_validate(response.json())
+    result: SubmissionWorkerSchema = SubmissionWorkerSchema.model_validate(response.json())
     return result
 
 
-def report_result(submission_id: str, result: Optional[SubmissionResult]) -> None:
+def report_result(submission_id: str, result: Optional[SubmissionResultSchema]) -> None:
     report_endpoint_url = f"{MASTER_URL}/worker/submissions/{submission_id}/result"
     if result is None:
-        result = SubmissionResult()
+        result = SubmissionResultSchema()
         try:
             result.info = get_debug(os.path.join(DATA_LOCAL_PATH, "out"))
         except Exception:
             result.info = "Error while running submission"
     try:
-        requests.put(report_endpoint_url, json=result.model_dump())
+        requests.put(report_endpoint_url, json=result.model_dump(), headers={"X-API-Key": MASTER_API_KEY})
     except requests.exceptions.RequestException:
         print(f"Error while reporting result")
 
@@ -132,8 +135,9 @@ def init_worker_files() -> None:
     os.makedirs(os.path.join(DATA_LOCAL_PATH, "bin"))
     os.makedirs(os.path.join(DATA_LOCAL_PATH, "std"))
     os.makedirs(os.path.join(DATA_LOCAL_PATH, "out"))
-    os.makedirs(os.path.join(DATA_LOCAL_PATH, "conf", ))
-    os.makedirs(os.path.join(DATA_LOCAL_PATH, "tmp"))
+    os.makedirs(os.path.join(DATA_LOCAL_PATH, "conf"))
+    os.makedirs(os.path.join(DATA_LOCAL_PATH, "src"))
+    os.makedirs(os.path.join(DATA_LOCAL_PATH, "tests"))
 
 
 def process_submission() -> bool:
@@ -148,10 +152,10 @@ def process_submission() -> bool:
     print(f"Running submission {submission_dto.id}")
 
     init_worker_files()
-    problem_local_path: str = os.path.join(DATA_LOCAL_PATH, "tmp/tests")
-    problem_host_path: str = os.path.join(DATA_HOST_PATH, "tmp/tests")
-    submission_local_path: str = os.path.join(DATA_LOCAL_PATH, "tmp/src")
-    submission_host_path: str = os.path.join(DATA_HOST_PATH, "tmp/src")
+    problem_local_path: str = os.path.join(DATA_LOCAL_PATH, "tests")
+    problem_host_path: str = os.path.join(DATA_HOST_PATH, "tests")
+    submission_local_path: str = os.path.join(DATA_LOCAL_PATH, "src")
+    submission_host_path: str = os.path.join(DATA_HOST_PATH, "src")
 
     try:
         if submission_dto.problem_specification:
@@ -163,7 +167,7 @@ def process_submission() -> bool:
         print(f"Error while saving problem specification: {e}")
     
     try:
-        fetch_zip_data(submission_dto.submissions_url, submission_local_path, FETCH_TIMEOUT)
+        fetch_zip_data(submission_dto.submission_url, submission_local_path, FETCH_TIMEOUT)
     except Exception as e:
         print(f"Error while fetching submission data: {e}")
         return True
@@ -175,7 +179,7 @@ def process_submission() -> bool:
         return True
 
     print(f"Running submission {submission_dto.id}")
-    result: Optional[SubmissionResult] = run_containers(
+    result: Optional[SubmissionResultSchema] = run_containers(
         submission_host_path,
         problem_host_path,
         submission_dto.lang,
@@ -189,11 +193,10 @@ def run_containers(
     submission_path: str,
     tests_path: str,
     lang: str,
-    mainfile: Optional[str] = "main.py",
-    problem_specification: Optional[ProblemSpecification] = None,
-) -> Optional[SubmissionResult]:
+    mainfile: Optional[str] = None
+) -> Optional[SubmissionResultSchema]:
     if lang not in LANG_COMPILER_DICT:
-        result = SubmissionResult(info=f"Language '{lang}' is not supported")
+        result = SubmissionResultSchema(info=f"Language '{lang}' is not supported")
         print(result.info)
         return result
     
@@ -282,7 +285,7 @@ def run_containers(
         return None
 
     try:
-        result: SubmissionResult = get_results(os.path.join(DATA_LOCAL_PATH, "out"))
+        result: SubmissionResultSchema = get_results(os.path.join(DATA_LOCAL_PATH, "out"))
     except Exception as e:
         print(f"Error while getting results: {e}")
         return None
