@@ -1,0 +1,6 @@
+natsort 
+requests 
+pydantic 
+sqlalchemy 
+fastapi 
+docker
