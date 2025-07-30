@@ -7,13 +7,13 @@ services:
     build:
       dockerfile: worker/dockerfile
     volumes:
-      - ${STOS_FILES}/data/shared:/shared:ro
-      - ${STOS_FILES}/data/workers:/workers:rw
+      - ${STOS_FILES}/shared:/shared:ro
+      - ${STOS_FILES}/workers:/workers:rw
       - ${DOCKER_SOCK}:/var/run/docker.sock:rw
     environment:
       - MASTER_URL=http://master:80
       - WORKERS_DATA_LOCAL_PATH=/workers
-      - WORKERS_DATA_HOST_PATH=${STOS_FILES}/data/workers
+      - WORKERS_DATA_HOST_PATH=${STOS_FILES}/workers
       - EXEC_IMAGE_NAME=${EXEC_IMAGE_NAME}
       - JUDGE_IMAGE_NAME=${JUDGE_IMAGE_NAME}
       - LANG_COMPILER_DICT=${LANG_COMPILER_DICT}
@@ -33,7 +33,7 @@ services:
     build:
       dockerfile: adapter/dockerfile
     volumes:
-      - ${STOS_FILES}/data/shared:/shared:rw
+      - ${STOS_FILES}/shared:/shared:rw
     environment:
       - MASTER_URL=http://master:80
       - MASTER_API_KEY=${MASTER_API_KEY}
@@ -50,7 +50,7 @@ services:
     build:
       dockerfile: master/dockerfile
     volumes:
-      - ${STOS_FILES}/data:/db:rw
+      - ${STOS_FILES}:/db:rw
     environment:
       - WORKER_URLS=http://worker:80
       - MASTER_API_KEY=${MASTER_API_KEY}

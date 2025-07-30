@@ -7,12 +7,15 @@ YELLOW='\033[1;33m'
 BLUE='\033[1;34m'
 NC='\033[0m' 
 
-APP_PATH="/srv/stos2025"
-SERVICE_NAME="stos2025.service"
+USER_NAME="stos2025"
+GROUP_NAME="stos2025"
+APP_NAME="stos2025"
+APP_PATH="/srv/$APP_NAME"
+SERVICE_NAME="$APP_NAME.service"
 SERVICE_PATH="/etc/systemd/system/$SERVICE_NAME"
-TMP_SRC="/tmp/stos2025/src"
+TMP_SRC="/tmp/$APP_NAME"
 
-echo -e "${BLUE}[INFO] Starting stos2025 installation script...${NC}"
+echo -e "${BLUE}[INFO] Starting $APP_NAME installation script...${NC}"
 
 # ------------------------------------------------------------------------------
 # 1. Check for required tools
@@ -28,28 +31,28 @@ done
 # ------------------------------------------------------------------------------
 # 2. Create group and system user
 # ------------------------------------------------------------------------------
-echo -e "${BLUE}[INFO] Creating system group and user 'stos2025'...${NC}"
+echo -e "${BLUE}[INFO] Creating system group: '$GROUP_NAME' and user '$USER_NAME'...${NC}"
 
-if ! getent group stos2025 > /dev/null; then
-    sudo groupadd -r stos2025
-    echo -e "${GREEN}[OK] Group 'stos2025' created.${NC}"
+if ! getent group $GROUP_NAME > /dev/null; then
+    sudo groupadd -r $GROUP_NAME
+    echo -e "${GREEN}[OK] Group '$GROUP_NAME' created.${NC}"
 else
     echo -e "${YELLOW}[SKIP] Group 'stos2025' already exists.${NC}"
 fi
 
-if ! id -u stos2025 > /dev/null 2>&1; then
+if ! id -u $USER_NAME > /dev/null 2>&1; then
     # Create system user: no home, no login shell
-    sudo useradd -r -M -s /usr/sbin/nologin -g stos2025 stos2025
-    echo -e "${GREEN}[OK] User 'stos2025' created.${NC}"
+    sudo useradd -r -M -s /usr/sbin/nologin -g $GROUP_NAME $USER_NAME
+    echo -e "${GREEN}[OK] User '$USER_NAME' created.${NC}"
 else
-    echo -e "${YELLOW}[SKIP] User 'stos2025' already exists.${NC}"
+    echo -e "${YELLOW}[SKIP] User '$USER_NAME' already exists.${NC}"
 fi
 
 # ------------------------------------------------------------------------------
 # 3. Add user to Docker group
 # ------------------------------------------------------------------------------
-echo -e "${BLUE}[INFO] Adding user 'stos2025' to docker group...${NC}"
-sudo usermod -aG docker stos2025
+echo -e "${BLUE}[INFO] Adding user '$USER_NAME' to docker group...${NC}"
+sudo usermod -aG docker $USER_NAME
 
 # ------------------------------------------------------------------------------
 # 4. Create application directory structure
@@ -60,7 +63,7 @@ for dir in "$APP_PATH" "$APP_PATH/src" "$APP_PATH/data/shared" "$APP_PATH/data/w
 done
 
 # Set permissions and ownership
-sudo chown -R stos2025:stos2025 "$APP_PATH"
+sudo chown -R $USER_NAME:$GROUP_NAME "$APP_PATH"
 sudo chmod -R 770 "$APP_PATH"
 echo -e "${GREEN}[OK] Directory permissions set.${NC}"
 
@@ -69,7 +72,7 @@ echo -e "${GREEN}[OK] Directory permissions set.${NC}"
 # ------------------------------------------------------------------------------
 echo -e "${BLUE}[INFO] Pulling application source files...${NC}"
 
-sudo rm -rf /tmp/stos2025
+sudo rm -rf "$TMP_SRC"
 sudo mkdir -p "$TMP_SRC"
 
 # NOTE: replace this with actual git clone in production
@@ -78,27 +81,46 @@ sudo cp -a /home/stos/Projekt_Inzynierski-2025 "$TMP_SRC/"
 
 # Copy source files to application path
 sudo cp -a "$TMP_SRC/Projekt_Inzynierski-2025/src/." "$APP_PATH/src/"
-sudo rm -rf /tmp/stos2025
+sudo rm -rf "$TMP_SRC"
 
-rm -rf /srv/stos2025/compose.yml
-rm -rf /srv/stos2025/.env
-ln -s /srv/stos2025/src/compose.yml /srv/stos2025/compose.yml
-ln -s /srv/stos2025/src/.env /srv/stos2025/.env
+sudo rm -rf "$APP_PATH/compose.yml"
+sudo rm -rf "$APP_PATH/.env"
+sudo ln -s "$APP_PATH/src/compose.yml" "$APP_PATH/compose.yml"
+sudo ln -s "$APP_PATH/src/.env" "$APP_PATH/.env"
 echo -e "${GREEN}[OK] Source files copied.${NC}"
 
 # ------------------------------------------------------------------------------
-# 6. Build Docker images
+# 6. Environment file setup 
+# ------------------------------------------------------------------------------
+DOCKER_GID=$(getent group docker | cut -d: -f3)
+STOS_GID=$(getent group stos2025 | cut -d: -f3)
+STOS_FILES="$APP_PATH/data"
+ENV_FILE="$APP_PATH/.env"
+
+echo -e "${BLUE}[INFO] Updating .env file...${NC}"
+
+sudo sed -i \
+    -e "s|^STOS_FILES=.*|STOS_FILES=$STOS_FILES|" \
+    -e "s|^DOCKER_GID=.*|DOCKER_GID=$DOCKER_GID|" \
+    -e "s|^STOS_GID=.*|STOS_GID=$STOS_GID|" \
+    "$ENV_FILE"
+
+grep -E '^(STOS_FILES|DOCKER_GID|STOS_GID)=' "$ENV_FILE"
+echo -e "${GREEN}[OK] .env file updated:${NC}"
+
+# ------------------------------------------------------------------------------
+# 7. Build Docker images
 # ------------------------------------------------------------------------------
 echo -e "${BLUE}[INFO] Building Docker images...${NC}"
 sudo docker compose -f "$APP_PATH/src/compose.yml" build
 echo -e "${GREEN}[OK] Docker build complete.${NC}"
 
 # ------------------------------------------------------------------------------
-# 7. Setup systemd service
+# 8. Setup systemd service
 # ------------------------------------------------------------------------------
 echo -e "${BLUE}[INFO] Creating systemd service...${NC}"
 
-sudo cp "$APP_PATH/src/.deploy/$SERVICE_NAME" "$SERVICE_PATH"
+sudo cp "$APP_PATH/src/deploy/$SERVICE_NAME" "$SERVICE_PATH"
 sudo chmod 644 "$SERVICE_PATH"
 sudo systemctl daemon-reload
 sudo systemctl enable "$SERVICE_NAME"

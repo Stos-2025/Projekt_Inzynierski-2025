@@ -4,3 +4,4 @@ pydantic
 sqlalchemy 
 fastapi 
 docker
+ansi2html
