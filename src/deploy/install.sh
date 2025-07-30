@@ -105,7 +105,7 @@ sudo sed -i \
     -e "s|^STOS_GID=.*|STOS_GID=$STOS_GID|" \
     "$ENV_FILE"
 
-grep -E '^(STOS_FILES|DOCKER_GID|STOS_GID)=' "$ENV_FILE"
+sudo grep -E '^(STOS_FILES|DOCKER_GID|STOS_GID)=' "$ENV_FILE"
 echo -e "${GREEN}[OK] .env file updated:${NC}"
 
 # ------------------------------------------------------------------------------
