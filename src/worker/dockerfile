@@ -16,6 +16,8 @@ LABEL org.opencontainers.image.documentation="https://github.com/Stos-2025/Proje
 
 # coping files
 COPY worker/worker.py .
+COPY worker/adapter.py .
+COPY worker/script_parser.py .
 COPY common/*.py ./common/
 
 

@@ -6,10 +6,10 @@ import docker
 import shutil
 import signal
 import zipfile
+import adapter
 import docker.models
-import docker.models.containers
-import requests
 import urllib.request
+import docker.models.containers
 from types import FrameType
 from natsort import natsorted
 from typing import Dict, List, Optional
@@ -22,8 +22,6 @@ CONTAINERS_TIMEOUT = 300
 INFO_LENGTH = 5000
 CONTAINERS_MEMORY_LIMIT = "512m"
 NAME: str = f"worker_{os.environ['HOSTNAME']}"
-MASTER_URL: str = os.environ["MASTER_URL"]
-MASTER_API_KEY: str = os.environ["MASTER_API_KEY"]
 DATA_LOCAL_PATH = os.path.join(os.environ["WORKERS_DATA_LOCAL_PATH"], NAME)
 DATA_HOST_PATH = os.path.join(os.environ["WORKERS_DATA_HOST_PATH"], NAME)
 
@@ -101,30 +99,18 @@ def fetch_zip_data(url: str, dst_path: str, timeout: int) -> None:
         zip_ref.extractall(dst_path)
 
 
-def fetch_submission() -> SubmissionWorkerSchema:
-    submission_endpoint_url = f"{MASTER_URL}/worker/submission"
-    response = requests.post(submission_endpoint_url, headers={"X-API-Key": MASTER_API_KEY})
-    if response.status_code == 404:
-        raise FileNotFoundError("Submission not found")
-    elif response.status_code != 200:
-        raise Exception("Failed to fetch submission")
-
-    result: SubmissionWorkerSchema = SubmissionWorkerSchema.model_validate(response.json())
-    return result
-
-
 def report_result(submission_id: str, result: Optional[SubmissionResultSchema]) -> None:
-    report_endpoint_url = f"{MASTER_URL}/worker/submissions/{submission_id}/result"
-    if result is None:
-        result = SubmissionResultSchema()
-        try:
-            result.info = get_debug(os.path.join(DATA_LOCAL_PATH, "out"))
-        except Exception:
-            result.info = "Error while running submission"
-    try:
-        requests.put(report_endpoint_url, json=result.model_dump(), headers={"X-API-Key": MASTER_API_KEY})
-    except requests.exceptions.RequestException:
-        print(f"Error while reporting result")
+    print(f"Reporting result for submission {submission_id}")
+    # if result is None:
+    #     result = SubmissionResultSchema()
+    #     try:
+    #         result.info = get_debug(os.path.join(DATA_LOCAL_PATH, "out"))
+    #     except Exception:
+    #         result.info = "Error while running submission"
+    # try:
+    #     requests.put(report_endpoint_url, json=result.model_dump(), headers={"X-API-Key": MASTER_API_KEY})
+    # except requests.exceptions.RequestException:
+    #     print(f"Error while reporting result")
 
 
 def init_worker_files() -> None:
@@ -142,14 +128,14 @@ def init_worker_files() -> None:
 
 def process_submission() -> bool:
     try:
-        submission_dto = fetch_submission()
+        submission: SubmissionWorkerSchema = adapter.get_submission()
     except FileNotFoundError:
         return True
     except Exception as e:
         print(f"Error while fetching submission: {e}")
         return True
 
-    print(f"Running submission {submission_dto.id}")
+    print(f"Running submission {submission.id}")
 
     init_worker_files()
     problem_local_path: str = os.path.join(DATA_LOCAL_PATH, "tests")
@@ -158,34 +144,34 @@ def process_submission() -> bool:
     submission_host_path: str = os.path.join(DATA_HOST_PATH, "src")
 
     try:
-        if submission_dto.problem_specification:
+        if submission.problem_specification:
             problem_specification_path = os.path.join(DATA_LOCAL_PATH, "conf", "problem_specification.json")
             with open(problem_specification_path, "w") as f:
-                json.dump(submission_dto.problem_specification.model_dump(), f)
+                json.dump(submission.problem_specification.model_dump(), f)
             print(f"Problem specification saved to {problem_specification_path}")
     except Exception as e:
         print(f"Error while saving problem specification: {e}")
     
     try:
-        fetch_zip_data(submission_dto.submission_url, submission_local_path, FETCH_TIMEOUT)
+        fetch_zip_data(submission.submission_url, submission_local_path, FETCH_TIMEOUT)
     except Exception as e:
         print(f"Error while fetching submission data: {e}")
         return True
 
     try:
-        fetch_zip_data(submission_dto.task_url, problem_local_path, FETCH_TIMEOUT)
+        fetch_zip_data(submission.task_url, problem_local_path, FETCH_TIMEOUT)
     except Exception as e:
         print(f"Error while fetching problem data: {e}")
         return True
 
-    print(f"Running submission {submission_dto.id}")
+    print(f"Running submission {submission.id}")
     result: Optional[SubmissionResultSchema] = run_containers(
         submission_host_path,
         problem_host_path,
-        submission_dto.lang,
-        submission_dto.mainfile,
+        submission.lang,
+        submission.mainfile,
     )
-    report_result(submission_dto.id, result)
+    report_result(submission.id, result)
     return False
 
 

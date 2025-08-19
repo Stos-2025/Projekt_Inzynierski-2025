@@ -2,8 +2,6 @@ services:
   worker:
     image: stos_worker
     restart: always
-    depends_on:
-      - master
     build:
       dockerfile: worker/dockerfile
     volumes:
@@ -11,13 +9,12 @@ services:
       - ${STOS_FILES}/workers:/workers:rw
       - ${DOCKER_SOCK}:/var/run/docker.sock:rw
     environment:
-      - MASTER_URL=http://master:80
       - WORKERS_DATA_LOCAL_PATH=/workers
       - WORKERS_DATA_HOST_PATH=${STOS_FILES}/workers
       - EXEC_IMAGE_NAME=${EXEC_IMAGE_NAME}
       - JUDGE_IMAGE_NAME=${JUDGE_IMAGE_NAME}
       - LANG_COMPILER_DICT=${LANG_COMPILER_DICT}
-      - MASTER_API_KEY=${MASTER_API_KEY}
+      
     group_add:  
       - ${DOCKER_GID}
       - ${STOS_GID}
@@ -25,37 +22,37 @@ services:
       mode: replicated
       replicas: 4
      
-  adapter:
-    image: stos_adapter
-    restart: always
-    depends_on:
-      - master
-    build:
-      dockerfile: adapter/dockerfile
-    volumes:
-      - ${STOS_FILES}/shared:/shared:rw
-    environment:
-      - MASTER_URL=http://master:80
-      - MASTER_API_KEY=${MASTER_API_KEY}
-      - GUI_URL=${GUI_URL}
-      - QUEUE_NAMES=${QUEUE_NAMES}
-      - QUEUE_LANG_DICT=${QUEUE_LANG_DICT}
-    group_add:  
-      - ${STOS_GID}
+  # adapter:
+  #   image: stos_adapter
+  #   restart: always
+  #   depends_on:
+  #     - master
+  #   build:
+  #     dockerfile: adapter/dockerfile
+  #   volumes:
+  #     - ${STOS_FILES}/shared:/shared:rw
+  #   environment:
+  #     - MASTER_URL=http://master:80
+  #     - MASTER_API_KEY=${MASTER_API_KEY}
+  #     - GUI_URL=${GUI_URL}
+  #     - QUEUE_NAMES=${QUEUE_NAMES}
+  #     - QUEUE_LANG_DICT=${QUEUE_LANG_DICT}
+  #   group_add:  
+  #     - ${STOS_GID}
 
-  master:
-    image: stos_master
-    restart: always
-    tty: true
-    build:
-      dockerfile: master/dockerfile
-    volumes:
-      - ${STOS_FILES}:/db:rw
-    environment:
-      - WORKER_URLS=http://worker:80
-      - MASTER_API_KEY=${MASTER_API_KEY}
-    group_add:  
-      - ${STOS_GID}
-    # development only
-    ports:
-      - 8080:80
+  # master:
+  #   image: stos_master
+  #   restart: always
+  #   tty: true
+  #   build:
+  #     dockerfile: master/dockerfile
+  #   volumes:
+  #     - ${STOS_FILES}:/db:rw
+  #   environment:
+  #     - WORKER_URLS=http://worker:80
+  #     - MASTER_API_KEY=${MASTER_API_KEY}
+  #   group_add:  
+  #     - ${STOS_GID}
+  #   # development only
+  #   ports:
+  #     - 8080:80

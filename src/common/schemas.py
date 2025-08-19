@@ -1,7 +1,6 @@
-from datetime import datetime
 from pydantic import BaseModel
 from typing import List, Optional
-from common.enums import SubmissionStatus
+# from common.enums import SubmissionStatus
 
 
 class TestResultSchema(BaseModel):
@@ -56,17 +55,17 @@ class ProblemSpecificationSchema(BaseModel):
     tests: List[TestSpecificationSchema] = []
 
 
-class SubmissionSchema(BaseModel):
-    id: str
-    status: SubmissionStatus = SubmissionStatus.NONE
-    task_url: str
-    submission_url: str
-    lang: str
-    mainfile: Optional[str] = None
-    submitted_at: Optional[datetime] = None
-    submitted_by: Optional[str] = None
-    result: Optional[SubmissionResultSchema] = None
-    problem_specification: Optional[ProblemSpecificationSchema] = None
+# class SubmissionSchema(BaseModel):
+#     id: str
+#     status: SubmissionStatus = SubmissionStatus.NONE
+#     task_url: str
+#     submission_url: str
+#     lang: str
+#     mainfile: Optional[str] = None
+#     submitted_at: Optional[datetime] = None
+#     submitted_by: Optional[str] = None
+#     result: Optional[SubmissionResultSchema] = None
+#     problem_specification: Optional[ProblemSpecificationSchema] = None
 
 
 class SubmissionWorkerSchema(BaseModel):
@@ -75,13 +74,14 @@ class SubmissionWorkerSchema(BaseModel):
     submission_url: str
     lang: str
     mainfile: Optional[str] = None
+    submitted_by: Optional[str] = None
     problem_specification: Optional[ProblemSpecificationSchema] = None
     
 
-class SubmissionCreateSchema(BaseModel):
-    task_url: str = r"file:///shared/examples/0/tests.zip"
-    submission_url: str = r"file:///shared/examples/0/src.zip"
-    lang: str
-    mainfile: Optional[str] = None
-    submitted_by: Optional[str] = None
-    problem_specification: Optional[ProblemSpecificationSchema] = None
+# class SubmissionCreateSchema(BaseModel):
+#     task_url: str = r"file:///shared/examples/0/tests.zip"
+#     submission_url: str = r"file:///shared/examples/0/src.zip"
+#     lang: str
+#     mainfile: Optional[str] = None
+#     submitted_by: Optional[str] = None
+#     problem_specification: Optional[ProblemSpecificationSchema] = None

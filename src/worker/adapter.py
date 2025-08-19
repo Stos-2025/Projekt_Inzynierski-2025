@@ -1,20 +1,16 @@
 import io
 import json
-import signal
-import time
-from types import FrameType
 from typing import Any, Dict, List, Optional, Tuple
 import requests
 import os
 import zipfile
-from uuid import uuid4
-from common.schemas import ProblemSpecificationSchema, SubmissionCreateSchema, SubmissionResultSchema, TestSpecificationSchema
+from common.schemas import ProblemSpecificationSchema, SubmissionWorkerSchema, SubmissionResultSchema, TestSpecificationSchema
 import script_parser as sp 
 import ansi2html
 
 MASTER_API_KEY: str = os.environ["MASTER_API_KEY"]
 
-def fetch_submission(url: str, submission_directory_path: str, queue: str="stosvs") -> Tuple[str, str, str, str, str]:
+def fetch_submission(url: str, submission_directory_path: str, queue: str="stosvs") -> Tuple[str, str, str, str]:
     params = {
         "f": "get",
         "name": queue
@@ -24,16 +20,15 @@ def fetch_submission(url: str, submission_directory_path: str, queue: str="stosv
     if response.status_code == 200:
         problem_id = response.headers.get('X-Param').split(";")[0] # type: ignore
         student_id = response.headers.get('X-Param').split(";")[1] # type: ignore
-        server_id = response.headers.get('X-Server-Id')
+        submission_id = response.headers.get('X-Server-Id')
         content = response.content
         # print(f"Headers: {response.headers}")
         # print(f"Data: {content}...")
-        print(f"Server ID: {server_id}")
+        print(f"Submission ID: {submission_id}")
         print(f"Student ID: {student_id}")
         print(f"Problem ID: {problem_id}")
         print(f"Queue: {queue}")
         
-        submission_id = f"adapter.{server_id}.{str(uuid4())}"
         src_directory_path = f'{submission_directory_path}/{submission_id}'
         os.system(f"mkdir -p {src_directory_path}/tmp/src")
          
@@ -52,10 +47,10 @@ def fetch_submission(url: str, submission_directory_path: str, queue: str="stosv
         raise FileNotFoundError("Submission not found")
     else:
         raise Exception(f"The request failed. Status code: {response.status_code}")
-    if not server_id:
+    if not submission_id or not problem_id:
         raise ValueError("Invalid response from the server")
 
-    return problem_id, server_id, submission_id, student_id, mainfile
+    return submission_id, problem_id, student_id, mainfile
 
 
 def list_problems_files(url: str, problem_id: str, area: int = 0) -> str:
@@ -247,7 +242,10 @@ Compiling...Running...OK
     print("Response:", response.text)
 
 
-def run_submission() -> None:
+
+
+
+def get_submission() -> SubmissionWorkerSchema:
     GUI_URL = os.environ["GUI_URL"]
     QUEUE_NAMES = os.environ["QUEUE_NAMES"].split(",")
     QUEUE_LANG_DICT: Dict[str, str] = json.loads(os.environ["QUEUE_LANG_DICT"])
@@ -258,26 +256,29 @@ def run_submission() -> None:
 
 
     for queue_name in QUEUE_NAMES:
+        
         # fetching the submission
         try:
             destination_path = os.path.join(SHARED_PATH, "submissions")
-            problem_id, _, submission_id, author, mainfile = fetch_submission(QURL, destination_path, queue_name)
+            submission_id, problem_id, author, mainfile = fetch_submission(QURL, destination_path, queue_name)
         except FileNotFoundError:
             continue
         except Exception as e:
             print(f"An error occurred while fetching the submission: {e}")
-            return
+            continue
 
+        
         # fetching the problem tests
         problem_specification: Optional[ProblemSpecificationSchema] = None
         try:
             problem_specification = fetch_problem(FSURL, f"{SHARED_PATH}/problems", problem_id)
         except Exception as e:
             print(f"An error occurred while fetching the problem: {e}")
-            return
+            continue
     
-        # running the submission
-        submission = SubmissionCreateSchema(
+        
+        return SubmissionWorkerSchema(
+            id = submission_id,
             task_url = f"file:///shared/problems/{problem_id}/tests.zip",
             submission_url = f"file:///shared/submissions/{submission_id}/src.zip",
             lang = QUEUE_LANG_DICT[queue_name],
@@ -285,68 +286,41 @@ def run_submission() -> None:
             submitted_by = author,
             problem_specification = problem_specification
         )
-        requests.put(f"{os.getenv('MASTER_URL')}/submissions/{submission_id}", json=submission.model_dump(), headers={"X-API-Key": MASTER_API_KEY})
 
 
-def handle_signal(signum: int, frame: Optional[FrameType]) -> None:
-    exit(0)
 
-
-def report_completed_submission() -> None:
+def report_completed_submission(submission_id: str) -> None:
     gui_url = os.getenv("GUI_URL")
     if gui_url is None:
         raise ValueError("GUI_URL environment variable is not set")
     repurl = f"{gui_url}/io-result.php"
 
-    response = requests.get(f"{os.getenv('MASTER_URL')}/submissions-completed", headers={"X-API-Key": MASTER_API_KEY}) # type: ignore
-    if response.status_code == 200:
-        submission_ids: List[str] = response.json()["submission_ids"]
-    else:
+ 
+
+    if not submission_id.startswith("adapter") or len(submission_id.split(".")) != 3:
         return
-
-    for submission_id in submission_ids:
-        if not submission_id.startswith("adapter") or len(submission_id.split(".")) != 3:
-            continue
-        response = requests.get(f"{os.getenv('MASTER_URL')}/submissions/{submission_id}/result", headers={"X-API-Key": MASTER_API_KEY}) # type: ignore
-        requests.patch(f"{os.getenv('MASTER_URL')}/submissions/{submission_id}/mark-as-reported", headers={"X-API-Key": MASTER_API_KEY})
-        
-        if response.status_code == 200:
-            result: SubmissionResultSchema = SubmissionResultSchema.model_validate(response.json())
-            # print(response.json())
-            print(f"Removed: {submission_id}")
-            server_id = submission_id.split(".")[1]
-            try:
-                report_result(repurl, server_id, result)
-            except Exception as e:
-                print(f"An error occurred while reporting the result: {e}")
-                return
-            # todo history
-            # try:
-            #     os.system(f"rm -rf /shared/submissions/{submission_id}")
-            # except Exception as e:
-            #     print(f"An error occurred while removing the submission: {e}")
-            #     return
-        else:
-            print("Error:", response.status_code, response.json())
+    
+    response = requests.get(f"{os.getenv('MASTER_URL')}/submissions/{submission_id}/result", headers={"X-API-Key": MASTER_API_KEY}) # type: ignore
+    requests.patch(f"{os.getenv('MASTER_URL')}/submissions/{submission_id}/mark-as-reported", headers={"X-API-Key": MASTER_API_KEY})
+    
+    if response.status_code == 200:
+        result: SubmissionResultSchema = SubmissionResultSchema.model_validate(response.json())
+        # print(response.json())
+        print(f"Removed: {submission_id}")
+        server_id = submission_id.split(".")[1]
+        try:
+            report_result(repurl, server_id, result)
+        except Exception as e:
+            print(f"An error occurred while reporting the result: {e}")
+            return
+        # todo history
+        # try:
+        #     os.system(f"rm -rf /shared/submissions/{submission_id}")
+        # except Exception as e:
+        #     print(f"An error occurred while removing the submission: {e}")
+        #     return
+    else:
+        print("Error:", response.status_code, response.json())
 
     
 
-def main():
-    os.umask(0)
-    signal.signal(signal.SIGINT, handle_signal)
-    signal.signal(signal.SIGTERM, handle_signal)
-    while True:
-        time.sleep(1)
-        try:
-            run_submission()
-        except Exception as e:
-            print(f"An error occurred: {e}")
-        try:
-            report_completed_submission()
-        except Exception as e:
-            print(f"An error occurred while reporting completed submissions: {e}")
-    
-
-
-if __name__ == "__main__":
-    main()
