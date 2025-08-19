@@ -1,0 +1,13 @@
+FROM alpine:3.20
+
+RUN apk add --no-cache python3 py3-pip
+RUN pip install --break-system-packages fastapi uvicorn python-multipart requests
+
+
+WORKDIR /app
+COPY gui_mock/gui_mock.py .
+COPY gui_mock/test_files/ ./test_files/
+
+ENTRYPOINT ["uvicorn", "gui_mock:app", "--no-access-log", "--host", "0.0.0.0", "--port", "80"]
+
+#docker build -t gui_mock ./src/gui_mock

@@ -72,7 +72,7 @@ class SubmissionWorkerSchema(BaseModel):
     id: str
     task_url: str
     submission_url: str
-    lang: str
+    comp_image: str
     mainfile: Optional[str] = None
     submitted_by: Optional[str] = None
     problem_specification: Optional[ProblemSpecificationSchema] = None

@@ -1,30 +1,40 @@
 import io
-import json
-from typing import Any, Dict, List, Optional, Tuple
-import requests
 import os
+import json
 import zipfile
+import requests
+import script_parser 
+import result_formatter
+from urllib.parse import urljoin
+from typing import Any, Dict, List, Optional, Tuple
 from common.schemas import ProblemSpecificationSchema, SubmissionWorkerSchema, SubmissionResultSchema, TestSpecificationSchema
 
-import script_parser 
-import worker.result_formatter as result_formatter
 
-MASTER_API_KEY: str = os.environ["MASTER_API_KEY"]
+FETCH_TIMEOUT = 5  # seconds
+GUI_URL = os.environ["GUI_URL"]
+QURL = urljoin(GUI_URL, "qapi/qctrl.php")
+FSURL = urljoin(GUI_URL, "fsapi/fsctrl.php")
+RESURL = urljoin(GUI_URL, "io-result.php")
+
+SHARED_PATH = "/shared"
+QUEUE_COMPILER_DICT: Dict[str, str] = json.loads(os.environ["QUEUE_COMPILER_DICT"])
+
 
 def fetch_submission(url: str, submission_directory_path: str, queue: str="stosvs") -> Tuple[str, str, str, str]:
     params = {
         "f": "get",
         "name": queue
     }
-    response = requests.get(url, params=params)
+    
+    response = requests.get(url, params=params, timeout=FETCH_TIMEOUT)
+    
     mainfile = ""
     if response.status_code == 200:
         problem_id = response.headers.get('X-Param').split(";")[0] # type: ignore
         student_id = response.headers.get('X-Param').split(";")[1] # type: ignore
         submission_id = response.headers.get('X-Server-Id')
         content = response.content
-        # print(f"Headers: {response.headers}")
-        # print(f"Data: {content}...")
+
         print(f"Submission ID: {submission_id}")
         print(f"Student ID: {student_id}")
         print(f"Problem ID: {problem_id}")
@@ -60,7 +70,9 @@ def list_problems_files(url: str, problem_id: str, area: int = 0) -> str:
         "area": area, 
         "pid": problem_id,
     }
-    response = requests.get(url, params=params)
+    
+    response = requests.get(url, params=params, timeout=FETCH_TIMEOUT)
+
     if response.status_code == 200:
         response_content = response.content.decode('utf-8')
     else:
@@ -85,7 +97,7 @@ def get_file(url: str, destination_path: str, file_name: str, problem_id: str, a
         raise Exception(f"The request failed. Status code: {response.status_code}")
 
 
-def parse_script(script_path: str) -> List[TestSpecificationSchema]:
+def read_and_parse_script(script_path: str) -> List[TestSpecificationSchema]:
     script_content = ""
     with open(script_path, "r") as script_file:
         script_content = script_file.read()
@@ -106,39 +118,34 @@ def parse_script(script_path: str) -> List[TestSpecificationSchema]:
 def fetch_problem(url: str, problem_directory_path: str, problem_id: str) -> Optional[ProblemSpecificationSchema]:
     problem_directory_path = f'{problem_directory_path}/{problem_id}'
     problem_tests_zip_path = f"{problem_directory_path}/tests.zip"
+    
+    #prepare
     os.system(f"mkdir -p {problem_directory_path}")
     os.system(f"rm -rf {problem_directory_path}/*")
     os.system(f"mkdir -p {problem_directory_path}/tmp/in")
     os.system(f"mkdir -p {problem_directory_path}/tmp/out")
     os.system(f"mkdir -p {problem_directory_path}/tmp/other")
     
-    try:
-        file_list = list_problems_files(url, problem_id)
-    except Exception as e:
-        print(f"An error occurred while listing files: {e}")
-        return
+    file_list = list_problems_files(url, problem_id)
     
-    try:
-        with zipfile.ZipFile(problem_tests_zip_path, 'w') as tests_zip:
-            for line in file_list.splitlines():
-                print(f"\tfetching {line}...")
-                file_name = line.split(':')[0]
-                if file_name.endswith(".in"):
-                    get_file(url, f"{problem_directory_path}/tmp/in/{file_name}", file_name, problem_id)
-                    tests_zip.write(f"{problem_directory_path}/tmp/in/{file_name}", file_name)
-                elif file_name.endswith(".out"):
-                    get_file(url, f"{problem_directory_path}/tmp/out/{file_name}", file_name, problem_id)
-                    tests_zip.write(f"{problem_directory_path}/tmp/out/{file_name}", file_name)
-                elif file_name == "script.txt":
-                    get_file(url, f"{problem_directory_path}/tmp/other/{file_name}", file_name, problem_id)
-    except Exception as e:
-        print(f"An error occurred while fetching files: {e}")
-        return
+    with zipfile.ZipFile(problem_tests_zip_path, 'w') as tests_zip:
+        for line in file_list.splitlines():
+            print(f"\tfetching {line}...")
+            file_name = line.split(':')[0]
+            if file_name.endswith(".in"):
+                get_file(url, f"{problem_directory_path}/tmp/in/{file_name}", file_name, problem_id)
+                tests_zip.write(f"{problem_directory_path}/tmp/in/{file_name}", file_name)
+            elif file_name.endswith(".out"):
+                get_file(url, f"{problem_directory_path}/tmp/out/{file_name}", file_name, problem_id)
+                tests_zip.write(f"{problem_directory_path}/tmp/out/{file_name}", file_name)
+            elif file_name == "script.txt":
+                get_file(url, f"{problem_directory_path}/tmp/other/{file_name}", file_name, problem_id)
     
+
     # parsing the script
     problem_specification = None
     try: 
-        tests = parse_script(f"{problem_directory_path}/tmp/other/script.txt")
+        tests = read_and_parse_script(f"{problem_directory_path}/tmp/other/script.txt")
         problem_specification = ProblemSpecificationSchema(
             id=problem_id,
             tests=tests
@@ -150,10 +157,11 @@ def fetch_problem(url: str, problem_directory_path: str, problem_id: str) -> Opt
     return problem_specification
 
 
-def report_result(submission_id: str, result: SubmissionResultSchema) -> None:
-    gui_url = os.environ["GUI_URL"]
-    repurl = f"{gui_url}/io-result.php"
+# ------------------------------------------------------------------------------
+# Main functions
+# ------------------------------------------------------------------------------
 
+def report_result(submission_id: str, result: SubmissionResultSchema) -> None:
     score: float = result_formatter.get_result_score(result)
     result_content: str = result_formatter.get_result_formatted(result)
     info_content: str = result_formatter.get_info_formatted(result)
@@ -168,23 +176,14 @@ def report_result(submission_id: str, result: SubmissionResultSchema) -> None:
         "id": submission_id
     }
     
-    response = requests.post(repurl, data=data, files=files)
+    response = requests.post(RESURL, data=data, files=files)
     print("Response:", response.text)
     print(f"Reported result for submission {submission_id} with score {score}")     
 
 
 def get_submission() -> SubmissionWorkerSchema:
-    GUI_URL = os.environ["GUI_URL"]
-    QUEUE_NAMES = os.environ["QUEUE_NAMES"].split(",")
-    QUEUE_LANG_DICT: Dict[str, str] = json.loads(os.environ["QUEUE_LANG_DICT"])
+    for queue_name in QUEUE_COMPILER_DICT.keys():
 
-    QURL = os.path.join(GUI_URL, "qapi/qctrl.php")
-    FSURL = os.path.join(GUI_URL, "fsapi/fsctrl.php")
-    SHARED_PATH = "/shared"
-
-
-    for queue_name in QUEUE_NAMES:
-        
         # fetching the submission
         try:
             destination_path = os.path.join(SHARED_PATH, "submissions")
@@ -195,7 +194,6 @@ def get_submission() -> SubmissionWorkerSchema:
             print(f"An error occurred while fetching the submission: {e}")
             continue
 
-        
         # fetching the problem tests
         problem_specification: Optional[ProblemSpecificationSchema] = None
         try:
@@ -204,12 +202,11 @@ def get_submission() -> SubmissionWorkerSchema:
             print(f"An error occurred while fetching the problem: {e}")
             continue
     
-        
         return SubmissionWorkerSchema(
             id = submission_id,
             task_url = f"file:///shared/problems/{problem_id}/tests.zip",
             submission_url = f"file:///shared/submissions/{submission_id}/src.zip",
-            lang = QUEUE_LANG_DICT[queue_name],
+            comp_image = QUEUE_COMPILER_DICT[queue_name],
             mainfile = mainfile,
             submitted_by = author,
             problem_specification = problem_specification

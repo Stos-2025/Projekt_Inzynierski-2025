@@ -12,14 +12,14 @@ import urllib.request
 import docker.models.containers
 from types import FrameType
 from natsort import natsorted
-from typing import Dict, List, Optional
+from typing import List, Optional
 from common.schemas import SubmissionResultSchema, SubmissionWorkerSchema, TestResultSchema
 
 
 FETCH_TIMEOUT = 5  # seconds
 POOLING_INTERVAL = 100e-3  # seconds
 CONTAINERS_TIMEOUT = 300
-INFO_LENGTH = 5000
+INFO_LENGTH_LIMIT = 2*5000
 CONTAINERS_MEMORY_LIMIT = "512m"
 NAME: str = f"worker_{os.environ['HOSTNAME']}"
 DATA_LOCAL_PATH = os.path.join(os.environ["WORKERS_DATA_LOCAL_PATH"], NAME)
@@ -27,7 +27,6 @@ DATA_HOST_PATH = os.path.join(os.environ["WORKERS_DATA_HOST_PATH"], NAME)
 
 EXEC_IMAGE: str = os.environ["EXEC_IMAGE_NAME"]
 JUDGE_IMAGE: str = os.environ["JUDGE_IMAGE_NAME"]
-LANG_COMPILER_DICT: Dict[str, str] = json.loads(os.environ["LANG_COMPILER_DICT"])
 
 
 def handle_signal(signum: int, frame: Optional[FrameType]) -> None:
@@ -48,7 +47,7 @@ def get_debug(path: str) -> Optional[str]:
     comp_file_path = os.path.join(path, "comp.txt")
     try:
         with open(comp_file_path, "r") as comp_file:
-            content = comp_file.read(INFO_LENGTH)
+            content = comp_file.read(INFO_LENGTH_LIMIT)
             if comp_file.read(1):
                 content += "\033[0m\033[0m..."
     except Exception:
@@ -168,7 +167,7 @@ def process_submission() -> bool:
     result: Optional[SubmissionResultSchema] = run_containers(
         submission_host_path,
         problem_host_path,
-        submission.lang,
+        submission.comp_image,
         submission.mainfile,
     )
     report_result(submission.id, result)
@@ -178,20 +177,16 @@ def process_submission() -> bool:
 def run_containers(
     submission_path: str,
     tests_path: str,
-    lang: str,
+    comp_image: str,
     mainfile: Optional[str] = None
 ) -> Optional[SubmissionResultSchema]:
-    if lang not in LANG_COMPILER_DICT:
-        result = SubmissionResultSchema(info=f"Language '{lang}' is not supported")
-        print(result.info)
-        return result
     
     mainfile = mainfile or "main.py"
-    comp_image = LANG_COMPILER_DICT[lang]
     conf_path = os.path.join(DATA_HOST_PATH, "conf")
     artifacts_bin_path = os.path.join(DATA_HOST_PATH, "bin")
     artifacts_std_path = os.path.join(DATA_HOST_PATH, "std")
     artifacts_out_path = os.path.join(DATA_HOST_PATH, "out")
+    
     client = docker.from_env()
     try:
         container: docker.models.containers.Container = client.containers.run( # type: ignore
@@ -250,7 +245,7 @@ def run_containers(
             image=JUDGE_IMAGE,
             detach=True,
             remove=True,
-            mem_limit="512m",
+            mem_limit=CONTAINERS_MEMORY_LIMIT,
             network_disabled=True,
             security_opt=["no-new-privileges"],
             environment={
