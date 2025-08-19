@@ -18,28 +18,19 @@ LABEL org.opencontainers.image.documentation="https://github.com/Stos-2025/Proje
 COPY worker/worker.py .
 COPY worker/adapter.py .
 COPY worker/script_parser.py .
+COPY worker/result_formatter.py .
 COPY common/*.py ./common/
 
 
 # installing dependencies
-RUN apk add --no-cache python3 py3-requests py3-pydantic py3-docker-py py3-natsort
+RUN apk add --no-cache python3 py3-pip py3-requests py3-pydantic py3-docker-py py3-natsort
+RUN pip install --break-system-packages ansi2html
 
 
 # setting up user
 RUN addgroup -S stos
 RUN adduser -S stos -G stos
 USER stos:stos
-
-
-# setting up envs
-ENV MASTER_URL=http://master:80
-ENV MASTER_API_KEY=MASTER_API_KEY
-ENV WORKERS_DATA_LOCAL_PATH=/workers
-ENV WORKERS_DATA_HOST_PATH=/home/damian/Projekty/Projekt_Inzynierski-2025/stos-files/workers
-
-ENV EXEC_IMAGE_NAME=d4m14n/stos:exec-latest
-ENV JUDGE_IMAGE_NAME=d4m14n/stos:judge-latest
-ENV LANG_COMPILER_DICT='{"cpp": "d4m14n/stos:gpp_comp-latest", "python": "d4m14n/stos:python3_comp-latest"}'
 
 
 # setting up entrypoint

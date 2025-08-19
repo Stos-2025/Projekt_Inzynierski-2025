@@ -101,16 +101,16 @@ def fetch_zip_data(url: str, dst_path: str, timeout: int) -> None:
 
 def report_result(submission_id: str, result: Optional[SubmissionResultSchema]) -> None:
     print(f"Reporting result for submission {submission_id}")
-    # if result is None:
-    #     result = SubmissionResultSchema()
-    #     try:
-    #         result.info = get_debug(os.path.join(DATA_LOCAL_PATH, "out"))
-    #     except Exception:
-    #         result.info = "Error while running submission"
-    # try:
-    #     requests.put(report_endpoint_url, json=result.model_dump(), headers={"X-API-Key": MASTER_API_KEY})
-    # except requests.exceptions.RequestException:
-    #     print(f"Error while reporting result")
+    if result is None:
+        result = SubmissionResultSchema()
+        try:
+            result.info = get_debug(os.path.join(DATA_LOCAL_PATH, "out"))
+        except Exception:
+            result.info = "Error while running submission"
+    try:
+        adapter.report_result(submission_id, result)
+    except Exception:
+        print(f"Error while reporting result")
 
 
 def init_worker_files() -> None:

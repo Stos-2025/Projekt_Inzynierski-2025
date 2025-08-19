@@ -5,7 +5,7 @@ services:
     build:
       dockerfile: worker/dockerfile
     volumes:
-      - ${STOS_FILES}/shared:/shared:ro
+      - ${STOS_FILES}/shared:/shared:rw
       - ${STOS_FILES}/workers:/workers:rw
       - ${DOCKER_SOCK}:/var/run/docker.sock:rw
     environment:
@@ -15,6 +15,9 @@ services:
       - JUDGE_IMAGE_NAME=${JUDGE_IMAGE_NAME}
       - LANG_COMPILER_DICT=${LANG_COMPILER_DICT}
       
+      - GUI_URL=${GUI_URL}
+      - QUEUE_NAMES=${QUEUE_NAMES}
+      - QUEUE_LANG_DICT=${QUEUE_LANG_DICT}
     group_add:  
       - ${DOCKER_GID}
       - ${STOS_GID}

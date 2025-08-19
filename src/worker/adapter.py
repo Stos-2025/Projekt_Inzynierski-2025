@@ -5,8 +5,9 @@ import requests
 import os
 import zipfile
 from common.schemas import ProblemSpecificationSchema, SubmissionWorkerSchema, SubmissionResultSchema, TestSpecificationSchema
-import script_parser as sp 
-import ansi2html
+
+import script_parser 
+import worker.result_formatter as result_formatter
 
 MASTER_API_KEY: str = os.environ["MASTER_API_KEY"]
 
@@ -91,7 +92,7 @@ def parse_script(script_path: str) -> List[TestSpecificationSchema]:
     if not script_content:
         raise ValueError("Script file is empty")
 
-    result, _ = sp.parse_problem_script(script_content) # type: ignore
+    result, _ = script_parser.parse_problem_script(script_content) # type: ignore
     tests: List[TestSpecificationSchema] = []
     for _, value in result.items():
         test = TestSpecificationSchema(
@@ -149,86 +150,14 @@ def fetch_problem(url: str, problem_directory_path: str, problem_id: str) -> Opt
     return problem_specification
 
 
-def report_result(url: str, server_id: str, result: SubmissionResultSchema) -> None:
-    if len(result.test_results) == 0:
-        score = 0
-    else:
-        score = 100*result.points / len(result.test_results)
-    print(f"Reported result for submission {server_id} with score {score}")     
-    result_content = \
-f"""
-result={score}
-infoformat=html
-debugformat=html
-info=All tests passed
-"""
-    
-    info_content = \
-f"""
-<style>
+def report_result(submission_id: str, result: SubmissionResultSchema) -> None:
+    gui_url = os.environ["GUI_URL"]
+    repurl = f"{gui_url}/io-result.php"
 
-    table {{ 
-        border-collapse: collapse; 
-        border: 1px solid #202020;
-        border-radius: 5px; 
-        overflow: hidden;
-    }}
-    th {{ 
-        border: 1px solid #202020; 
-        padding: 3px 10px; 
-        background-color: #d8d8d8; 
-        max-width: 350px;
-    }}
-    td {{
-        border-left: 1px solid #202020; 
-        border-right: 1px solid #202020; 
-        padding: 3px 10px; 
-        max-width: 350px;
-        white-space: nowrap;
-        overflow: hidden;
-    }}
-    tr:hover td {{
-    }}
-    tbody tr:nth-child(even) {{ filter: brightness(90%); }}
-    .success {{ background-color: #6fb65d; }}
-    .failure {{ background-color: #b65d62; }}
-    .eerror {{ background-color: #e69c53; }}
-
-</style>
-<b>Score:</b> {score:.2f}%
-<br>
-<br>
-"""
-    if len(result.test_results) != 0:
-        info_content += \
-f"""
-<div style="background-color: #202020; border-radius: 5px; width: fit-content;">
-    <table>
-        <tr>
-            <th>Test Name</th>
-            <th>Return Code</th>
-            <th>Time [s]</th>
-            <th>Maxrss [kB]</th>
-            <th>Info</th>
-        </tr>
-        {''.join(f"<tr class='{'success' if test.grade else ('failure' if test.ret_code >= 0 else 'eerror')}'><td>{test.test_name}</td><td>{test.ret_code if test.ret_code >= 0 else ''}</td><td>{test.time:.2f}</td><td>{test.memory:.0f}</td><td>{test.info}</td></tr>" for test in result.test_results)}
-    </table>
-</div>
-"""
-        
-    if result.info:
-        # info_parsed = result.info.replace('\n', '<br>').replace(' ', '&nbsp;')
-        converter = ansi2html.Ansi2HTMLConverter(inline=True)
-        info_parsed = converter.convert(result.info, full=False)
-        info_content += \
-f"""
-    <pre style='font-family: monospace;'>{info_parsed}</pre>
-"""
-        
-    debug_content = \
-f"""
-Compiling...Running...OK
-"""
+    score: float = result_formatter.get_result_score(result)
+    result_content: str = result_formatter.get_result_formatted(result)
+    info_content: str = result_formatter.get_info_formatted(result)
+    debug_content: str = result_formatter.get_debug_formatted(result)
 
     files = {
         'result': ('result.txt', result_content, 'text/plain'),
@@ -236,13 +165,12 @@ Compiling...Running...OK
         'debug': ('debug.txt', debug_content, 'text/plain'),
     }
     data = {
-        "id": server_id
+        "id": submission_id
     }
-    response = requests.post(url, data=data, files=files)
+    
+    response = requests.post(repurl, data=data, files=files)
     print("Response:", response.text)
-
-
-
+    print(f"Reported result for submission {submission_id} with score {score}")     
 
 
 def get_submission() -> SubmissionWorkerSchema:
@@ -286,41 +214,5 @@ def get_submission() -> SubmissionWorkerSchema:
             submitted_by = author,
             problem_specification = problem_specification
         )
-
-
-
-def report_completed_submission(submission_id: str) -> None:
-    gui_url = os.getenv("GUI_URL")
-    if gui_url is None:
-        raise ValueError("GUI_URL environment variable is not set")
-    repurl = f"{gui_url}/io-result.php"
-
- 
-
-    if not submission_id.startswith("adapter") or len(submission_id.split(".")) != 3:
-        return
-    
-    response = requests.get(f"{os.getenv('MASTER_URL')}/submissions/{submission_id}/result", headers={"X-API-Key": MASTER_API_KEY}) # type: ignore
-    requests.patch(f"{os.getenv('MASTER_URL')}/submissions/{submission_id}/mark-as-reported", headers={"X-API-Key": MASTER_API_KEY})
-    
-    if response.status_code == 200:
-        result: SubmissionResultSchema = SubmissionResultSchema.model_validate(response.json())
-        # print(response.json())
-        print(f"Removed: {submission_id}")
-        server_id = submission_id.split(".")[1]
-        try:
-            report_result(repurl, server_id, result)
-        except Exception as e:
-            print(f"An error occurred while reporting the result: {e}")
-            return
-        # todo history
-        # try:
-        #     os.system(f"rm -rf /shared/submissions/{submission_id}")
-        # except Exception as e:
-        #     print(f"An error occurred while removing the submission: {e}")
-        #     return
-    else:
-        print("Error:", response.status_code, response.json())
-
-    
+    raise FileNotFoundError("No valid submission found")
 
