@@ -7,4 +7,5 @@
 *.pyc
 stos-files/
 stos_files/
+test_files/
 .venv/

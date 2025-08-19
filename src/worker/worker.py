@@ -19,6 +19,7 @@ from common.schemas import SubmissionResultSchema, SubmissionWorkerSchema, TestR
 FETCH_TIMEOUT = 5  # seconds
 POOLING_INTERVAL = 100e-3  # seconds
 CONTAINERS_TIMEOUT = 300
+INFO_LENGTH = 5000
 CONTAINERS_MEMORY_LIMIT = "512m"
 NAME: str = f"worker_{os.environ['HOSTNAME']}"
 MASTER_URL: str = os.environ["MASTER_URL"]
@@ -46,13 +47,12 @@ def main() -> None:
 
 # todo: change this fuction
 def get_debug(path: str) -> Optional[str]:
-    INFO_LENGTH = 2000
     comp_file_path = os.path.join(path, "comp.txt")
     try:
         with open(comp_file_path, "r") as comp_file:
             content = comp_file.read(INFO_LENGTH)
             if comp_file.read(1):
-                content += "..."
+                content += "\033[0m\033[0m..."
     except Exception:
         return None
     return content if content else None

@@ -23,7 +23,7 @@ services:
       - ${STOS_GID}
     deploy:
       mode: replicated
-      replicas: 2
+      replicas: 4
      
   adapter:
     image: stos_adapter

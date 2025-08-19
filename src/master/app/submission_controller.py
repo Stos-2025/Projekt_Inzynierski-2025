@@ -96,8 +96,8 @@ async def pop_submission(
         submission = repository.get_by_id(submission_id)
         if not submission:
             raise HTTPException(status_code=404, detail="Submission not found")
-        if repository.get_status(submission_id) != SubmissionStatus.COMPLETED:
-            raise HTTPException(status_code=400, detail="Submission is not completed")
+        # if repository.get_status(submission_id) != SubmissionStatus.COMPLETED:
+            # raise HTTPException(status_code=400, detail="Submission is not completed")
         repository.delete(submission_id)
         
         return submission

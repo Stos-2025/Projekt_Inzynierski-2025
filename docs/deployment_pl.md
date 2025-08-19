@@ -70,6 +70,10 @@ Uruchomienie skryptu (zdalne pobranie i wykonanie):
 ```sh
 curl -s https://raw.githubusercontent.com/Stos-2025/Projekt_Inzynierski-2025/develop/src/deploy/install.sh | /bin/bash
 ```
+lub
+```sh
+wget --no-cache -qO- https://raw.githubusercontent.com/Stos-2025/Projekt_Inzynierski-2025/develop/src/deploy/install.sh | /bin/bash
+```
 
 ### Konfiguracja
 W kolejnym kroku należy zaktualizować plik konfiguracyjny `.env` (oraz opcjonalnie plik `compose.yml`), znajdujące się w folderze głownym np. `/srv/stos2025`. Plik `.env` w przypadku użycia skryptu instalacyjnego został wstępnie uzupełniony, należy go jednak dodatkowo uzupełnić ręcznie o pola: 

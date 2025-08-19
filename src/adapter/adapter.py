@@ -320,11 +320,12 @@ def report_completed_submission() -> None:
             except Exception as e:
                 print(f"An error occurred while reporting the result: {e}")
                 return
-            try:
-                os.system(f"rm -rf /shared/submissions/{submission_id}")
-            except Exception as e:
-                print(f"An error occurred while removing the submission: {e}")
-                return
+            # todo history
+            # try:
+            #     os.system(f"rm -rf /shared/submissions/{submission_id}")
+            # except Exception as e:
+            #     print(f"An error occurred while removing the submission: {e}")
+            #     return
         else:
             print("Error:", response.status_code, response.json())
 

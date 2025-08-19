@@ -20,20 +20,27 @@ class SubmissionResultSchema(BaseModel):
     
     def __str__(self) -> str:
         ret = ""
-        ret += "+------+------+-----+\n"
-        ret += "| name | time | ret |\n"
-        ret += "+------+------+-----+\n"
-        for result in self.test_results:
-            color = 131
-            if result.grade:
-                color = 65
-            if result.ret_code != 0:
-                color = 173
-            ret += f"|\033[48;5;{color}m\033[38;5;232m {result.test_name:>4} | "
-            ret += f"{result.time:.2f} | {result.ret_code:>3} \033[0m| {result.info}\n"
-        ret += "+------+------+-----+\n"
-        ret += "| " + f"points: {self.points}".center(17) + " |\n"
-        ret += "+------+------+-----+"
+        if len(self.test_results) > 0:
+            ret += "+------+------+-----+\n"
+            ret += "| name | time | ret |\n"
+            ret += "+------+------+-----+\n"
+            for result in self.test_results:
+                color = 131
+                if result.grade:
+                    color = 65
+                if result.ret_code != 0:
+                    color = 173
+                ret += f"|\033[48;5;{color}m\033[38;5;232m {result.test_name:>4} | "
+                ret += f"{result.time:.2f} | {result.ret_code:>3} \033[0m| {result.info}\n"
+            ret += "+------+------+-----+\n"
+            ret += "| " + f"points: {self.points}".center(17) + " |\n"
+            ret += "+------+------+-----+"
+        else:
+            ret += "+-------------------+\n"
+            ret += "| compilation error |\n"
+            ret += "+-------------------+"
+        if self.info:
+            ret += "\n\033[33mDebug info\033[0m: " + self.info[:-2]
         return ret
 
 
