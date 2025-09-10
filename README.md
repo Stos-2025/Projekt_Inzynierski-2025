@@ -7,28 +7,19 @@
 # Containers Graph
 ```mermaid
 graph LR
-  worker1[worker_1] --> master
-  worker2[worker_2] --> master
-  worker3[worker_...] --> master
-  worker4[worker_n] --> master
+  adapterModule --> extern
 
-  worker1 --> helpers
-  worker2 --> helpers
-  worker3 --> helpers
-  worker4 --> helpers
-
-  stosAdapter --> master
-
-  stosAdapter --> extern
-
-  subgraph helpers
-    stosAdapter[stosAdapter] --> taskCache[(taskCache)]
+  subgraph worker
+    adapterModule
+    subgraph subContainers
+      compiler --> exec
+      exec --> judge
+    end
 
   end
   
   subgraph extern
     stosGui
-    telemetryService
   end
 ```
 > [!NOTE]
