@@ -174,6 +174,33 @@ def process_submission() -> bool:
     return False
 
 
+def create_docker_container(
+    image: str,
+    environment: dict,
+    volumes: dict,
+    error_message: str
+) -> bool:
+    """Create and run a Docker container with given parameters."""
+    client = docker.from_env()
+    try:
+        container: docker.models.containers.Container = client.containers.run( # type: ignore
+            image=image,
+            detach=True,
+            remove=True,
+            mem_limit=CONTAINERS_MEMORY_LIMIT,
+            network_disabled=True,
+            security_opt=["no-new-privileges"],
+            environment=environment,
+            volumes=volumes,
+        )
+        container.wait(timeout=CONTAINERS_TIMEOUT)
+        return True
+    except Exception as e:
+        print(f"{error_message}: {e}")
+        return False
+
+# TODO there is repetitive docker container creation code
+
 def run_compilation_container(
     submission_path: str,
     comp_image: str,
@@ -181,32 +208,20 @@ def run_compilation_container(
     artifacts_bin_path: str,
     artifacts_out_path: str
 ) -> bool:
-    client = docker.from_env()
-    try:
-        container: docker.models.containers.Container = client.containers.run( # type: ignore
-            image=comp_image,
-            detach=True,
-            remove=True,
-            mem_limit=CONTAINERS_MEMORY_LIMIT,
-            network_disabled=True,
-            security_opt=["no-new-privileges"],
-            environment={
-                "SRC": "/data/src",
-                "OUT": "/data/out",
-                "BIN": "/data/bin",
-                "MAINFILE": mainfile,
-            },
-            volumes={
-                submission_path: {"bind": "/data/src", "mode": "ro"},
-                artifacts_bin_path: {"bind": "/data/bin", "mode": "rw"},
-                artifacts_out_path: {"bind": "/data/out", "mode": "rw"},
-            },
-        )
-        container.wait(timeout=CONTAINERS_TIMEOUT)
-        return True
-    except Exception as e:
-        print(f"Error while running compiler container: {e}")
-        return False
+    environment = {
+        "SRC": "/data/src",
+        "OUT": "/data/out",
+        "BIN": "/data/bin",
+        "MAINFILE": mainfile,
+    }
+    volumes = {
+        submission_path: {"bind": "/data/src", "mode": "ro"},
+        artifacts_bin_path: {"bind": "/data/bin", "mode": "rw"},
+        artifacts_out_path: {"bind": "/data/out", "mode": "rw"},
+    }
+    return create_docker_container(
+        comp_image, environment, volumes, "Error while running compiler container"
+    )
 
 
 def run_execution_container(
@@ -216,36 +231,24 @@ def run_execution_container(
     artifacts_std_path: str,
     artifacts_out_path: str
 ) -> bool:
-    client = docker.from_env()
-    try:
-        container: docker.models.containers.Container = client.containers.run( # type: ignore
-            image=EXEC_IMAGE,
-            detach=True,
-            remove=True,
-            mem_limit=CONTAINERS_MEMORY_LIMIT,
-            network_disabled=True,
-            security_opt=["no-new-privileges"],
-            environment={
-                "LOGS": "off",
-                "IN": "/data/in",
-                "OUT": "/data/out",
-                "STD": "/data/std",
-                "BIN": "/data/bin",
-                "CONF": "/data/conf",
-            },
-            volumes={
-                tests_path: {"bind": "/data/in", "mode": "ro"},
-                conf_path: {"bind": "/data/conf", "mode": "ro"},
-                artifacts_bin_path: {"bind": "/data/bin", "mode": "ro"},
-                artifacts_std_path: {"bind": "/data/std", "mode": "rw"},
-                artifacts_out_path: {"bind": "/data/out", "mode": "rw"},
-            },
-        )
-        container.wait(timeout=CONTAINERS_TIMEOUT)
-        return True
-    except Exception as e:
-        print(f"Error while running execution container: {e}")
-        return False
+    environment = {
+        "LOGS": "off",
+        "IN": "/data/in",
+        "OUT": "/data/out",
+        "STD": "/data/std",
+        "BIN": "/data/bin",
+        "CONF": "/data/conf",
+    }
+    volumes = {
+        tests_path: {"bind": "/data/in", "mode": "ro"},
+        conf_path: {"bind": "/data/conf", "mode": "ro"},
+        artifacts_bin_path: {"bind": "/data/bin", "mode": "ro"},
+        artifacts_std_path: {"bind": "/data/std", "mode": "rw"},
+        artifacts_out_path: {"bind": "/data/out", "mode": "rw"},
+    }
+    return create_docker_container(
+        EXEC_IMAGE, environment, volumes, "Error while running execution container"
+    )
 
 
 def run_judge_container(
@@ -253,32 +256,20 @@ def run_judge_container(
     artifacts_std_path: str,
     artifacts_out_path: str
 ) -> bool:
-    client = docker.from_env()
-    try:
-        container: docker.models.containers.Container = client.containers.run(  # type: ignore
-            image=JUDGE_IMAGE,
-            detach=True,
-            remove=True,
-            mem_limit=CONTAINERS_MEMORY_LIMIT,
-            network_disabled=True,
-            security_opt=["no-new-privileges"],
-            environment={
-                "LOGS": "off",
-                "IN": "/data/in",
-                "OUT": "/data/out",
-                "ANS": "/data/ans",
-            },
-            volumes={
-                tests_path: {"bind": "/data/ans", "mode": "ro"},
-                artifacts_std_path: {"bind": "/data/in", "mode": "ro"},
-                artifacts_out_path: {"bind": "/data/out", "mode": "rw"},
-            },
-        )
-        container.wait(timeout=CONTAINERS_TIMEOUT)
-        return True
-    except Exception as e:
-        print(f"Error while running judge container: {e}")
-        return False
+    environment = {
+        "LOGS": "off",
+        "IN": "/data/in",
+        "OUT": "/data/out",
+        "ANS": "/data/ans",
+    }
+    volumes = {
+        tests_path: {"bind": "/data/ans", "mode": "ro"},
+        artifacts_std_path: {"bind": "/data/in", "mode": "ro"},
+        artifacts_out_path: {"bind": "/data/out", "mode": "rw"},
+    }
+    return create_docker_container(
+        JUDGE_IMAGE, environment, volumes, "Error while running judge container"
+    )
 
 
 def run_containers(
