@@ -174,19 +174,13 @@ def process_submission() -> bool:
     return False
 
 
-def run_containers(
+def run_compilation_container(
     submission_path: str,
-    tests_path: str,
     comp_image: str,
-    mainfile: Optional[str] = None
-) -> Optional[SubmissionResultSchema]:
-    
-    mainfile = mainfile or "main.py"
-    conf_path = os.path.join(DATA_HOST_PATH, "conf")
-    artifacts_bin_path = os.path.join(DATA_HOST_PATH, "bin")
-    artifacts_std_path = os.path.join(DATA_HOST_PATH, "std")
-    artifacts_out_path = os.path.join(DATA_HOST_PATH, "out")
-    
+    mainfile: str,
+    artifacts_bin_path: str,
+    artifacts_out_path: str
+) -> bool:
     client = docker.from_env()
     try:
         container: docker.models.containers.Container = client.containers.run( # type: ignore
@@ -209,9 +203,20 @@ def run_containers(
             },
         )
         container.wait(timeout=CONTAINERS_TIMEOUT)
+        return True
     except Exception as e:
         print(f"Error while running compiler container: {e}")
-        return None
+        return False
+
+
+def run_execution_container(
+    tests_path: str,
+    conf_path: str,
+    artifacts_bin_path: str,
+    artifacts_std_path: str,
+    artifacts_out_path: str
+) -> bool:
+    client = docker.from_env()
     try:
         container: docker.models.containers.Container = client.containers.run( # type: ignore
             image=EXEC_IMAGE,
@@ -237,9 +242,18 @@ def run_containers(
             },
         )
         container.wait(timeout=CONTAINERS_TIMEOUT)
+        return True
     except Exception as e:
         print(f"Error while running execution container: {e}")
-        return None
+        return False
+
+
+def run_judge_container(
+    tests_path: str,
+    artifacts_std_path: str,
+    artifacts_out_path: str
+) -> bool:
+    client = docker.from_env()
     try:
         container: docker.models.containers.Container = client.containers.run(  # type: ignore
             image=JUDGE_IMAGE,
@@ -261,18 +275,42 @@ def run_containers(
             },
         )
         container.wait(timeout=CONTAINERS_TIMEOUT)
+        return True
     except Exception as e:
         print(f"Error while running judge container: {e}")
+        return False
+
+
+def run_containers(
+    submission_path: str,
+    tests_path: str,
+    comp_image: str,
+    mainfile: Optional[str] = None
+) -> Optional[SubmissionResultSchema]:
+    mainfile = mainfile or "main.py"
+    conf_path = os.path.join(DATA_HOST_PATH, "conf")
+    artifacts_bin_path = os.path.join(DATA_HOST_PATH, "bin")
+    artifacts_std_path = os.path.join(DATA_HOST_PATH, "std")
+    artifacts_out_path = os.path.join(DATA_HOST_PATH, "out")
+    
+    if not run_compilation_container(submission_path, comp_image, mainfile, 
+                                   artifacts_bin_path, artifacts_out_path):
+        return None
+    
+    if not run_execution_container(tests_path, conf_path, artifacts_bin_path,
+                                 artifacts_std_path, artifacts_out_path):
+        return None
+    
+    if not run_judge_container(tests_path, artifacts_std_path, artifacts_out_path):
         return None
 
     try:
         result: SubmissionResultSchema = get_results(os.path.join(DATA_LOCAL_PATH, "out"))
+        print(result)
+        return result
     except Exception as e:
         print(f"Error while getting results: {e}")
         return None
-
-    print(result)
-    return result
 
 
 if __name__ == "__main__":
