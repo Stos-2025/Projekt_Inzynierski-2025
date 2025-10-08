@@ -29,13 +29,13 @@ EXEC_IMAGE: str = os.environ["EXEC_IMAGE_NAME"]
 JUDGE_IMAGE: str = os.environ["JUDGE_IMAGE_NAME"]
 
 
-def handle_signal(signum: int, frame: Optional[FrameType]) -> None:
+def shutdown_worker_on_signal(signum: int, frame: Optional[FrameType]) -> None:
     exit(0)
 
 
 def main() -> None:
-    signal.signal(signal.SIGINT, handle_signal)
-    signal.signal(signal.SIGTERM, handle_signal)
+    signal.signal(signal.SIGINT, shutdown_worker_on_signal)
+    signal.signal(signal.SIGTERM, shutdown_worker_on_signal)
     while True:
         should_wait = process_submission()
         if should_wait:
