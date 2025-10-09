@@ -112,7 +112,7 @@ def report_result(submission_id: str, result: Optional[SubmissionResultSchema]) 
         print(f"Error while reporting result")
 
 
-def init_worker_files() -> None:
+def initialize_worker_directory_structure() -> None:
     os.umask(0)
     if os.path.exists(DATA_LOCAL_PATH):
         shutil.rmtree(DATA_LOCAL_PATH)
@@ -136,7 +136,7 @@ def process_submission() -> bool:
 
     print(f"Running submission {submission.id}")
 
-    init_worker_files()
+    initialize_worker_directory_structure()
     problem_local_path: str = os.path.join(DATA_LOCAL_PATH, "tests")
     problem_host_path: str = os.path.join(DATA_HOST_PATH, "tests")
     submission_local_path: str = os.path.join(DATA_LOCAL_PATH, "src")
