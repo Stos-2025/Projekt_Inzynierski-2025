@@ -11,7 +11,18 @@ RESULT_ENDPOINT = "io-result.php"
 MAX_FILE_SIZE = 1024 * 1024 * 1024 # 1 GB
 
 def post_result(submission_id: str, result: StosGuiResultSchema, gui_url: str, timeout: Timeout) -> str:
-    res_url: str = urljoin(gui_url, RESULT_ENDPOINT)
+    """Wysyła wynik oceny submisji do API StOS GUI.
+
+    Args:
+        submission_id (str): ID submisji.
+        result (StosGuiResultSchema): Wynik oceny submisji.
+        gui_url (str): URL API StOS GUI.
+        timeout (Timeout): Limit czasu na wysłanie wyniku.
+    
+    Returns:
+        str: Odpowiedź API StOS GUI.
+    """
+    res_url: str = urljoin(gui_url, RESULT_ENDPOINT) 
     files = {
         'result': ('result.txt', result.result, 'text/plain'),
         'info': ('info.txt', result.info, 'text/plain'),
@@ -28,6 +39,16 @@ def post_result(submission_id: str, result: StosGuiResultSchema, gui_url: str, t
 
 
 def get_problems_files_list(problem_id: str, gui_url: str, timeout: Timeout) -> List[str]:
+    """Pobiera listę plików z API STOS GUI.
+    
+    Args:
+        problem_id (str): ID problemu.
+        gui_url (str): URL API StOS GUI.
+        timeout (Timeout): Limit czasu na pobranie listy plików.
+    
+    Returns:
+        List[str]: Lista plików.
+    """
     fsapi_url: str = urljoin(gui_url, FSAPI_ENDPOINT)
     params: Dict[str, Any] = {
         "f": "list",
@@ -52,6 +73,15 @@ def get_problems_files_list(problem_id: str, gui_url: str, timeout: Timeout) -> 
 
 
 def get_file(file_name: str, problem_id: str, destination_file_path: str, gui_url: str, timeout: Timeout) -> None:
+    """Pobiera plik z API STOS GUI.
+    
+    Args:
+        file_name (str): Nazwa pliku.
+        problem_id (str): ID problemu.
+        destination_file_path (str): Ścieżka do pliku docelowego.
+        gui_url (str): URL API STOS GUI.
+        timeout (Timeout): Limit czasu na pobranie pliku.
+    """
     fsapi_url: str = urljoin(gui_url, FSAPI_ENDPOINT)
     params: Dict[str, Any] = {
         "f": "get",
@@ -78,6 +108,17 @@ def get_file(file_name: str, problem_id: str, destination_file_path: str, gui_ur
 
 
 def get_submission(queue_name: str, destination_file_path: str, gui_url: str, timeout: Timeout) -> Optional[SubmissionGuiSchema]:
+    """Pobiera submisję z API STOS GUI.
+    
+    Args:
+        queue_name (str): Nazwa kolejki.
+        destination_file_path (str): Ścieżka do pliku docelowego.
+        gui_url (str): URL API STOS GUI.
+        timeout (Timeout): Limit czasu na pobranie submisji.
+        
+    Returns:
+        Optional[SubmissionGuiSchema]: Obiekt submisji lub None, jeśli submisja nie została znaleziona.
+    """
     qapi_url: str = urljoin(gui_url, QAPI_ENDPOINT)
     params: Dict[str, str] = {
         "f": "get",

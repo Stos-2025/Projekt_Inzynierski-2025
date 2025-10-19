@@ -2,10 +2,26 @@ import ansi2html
 from common.schemas import SubmissionResultSchema
 
 def get_result_score(result: SubmissionResultSchema) -> float:
+    """Oblicza wynik procentowy na podstawie punktów uzyskanych w testach.
+    
+    Args:
+        result (SubmissionResultSchema): Wynik oceny submisji.
+    
+    Returns:
+        float: Wynik procentowy.
+    """
     return 100*result.points / len(result.test_results) if len(result.test_results) > 0 else 0
 
 
 def get_result_formatted(result: SubmissionResultSchema) -> str:
+    """Formatuje wynik oceny submisji.
+    
+    Args:
+        result (SubmissionResultSchema): Wynik oceny submisji.
+    
+    Returns:
+        str: Wynik oceny submisji w formacie dostosowanym do STOSu.
+    """
     score = get_result_score(result)
     result_content = \
 f"""
@@ -18,6 +34,14 @@ info=All tests passed
     
     
 def get_info_formatted(result: SubmissionResultSchema) -> str:
+    """Formatuje informacje o ocenie submisji.
+    
+    Args:
+        result (SubmissionResultSchema): Wynik oceny submisji.
+    
+    Returns:
+        str: Informacje o ocenie submisji w formacie dostosowanym do STOSu.
+    """
     score = get_result_score(result)
     info_content = \
 f"""

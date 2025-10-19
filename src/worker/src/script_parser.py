@@ -3,6 +3,18 @@ from typing import Any, Dict, List, Optional, Tuple
 from common.schemas import ProblemSpecificationSchema, TestSpecificationSchema
 
 def extract_raw_problem_script(script: str) -> Tuple[Dict[int, Dict[str, Any]], List[str]]:
+    """Funkcja ekstraktuje surowe dane z skryptu problemu w formacie dostosowanym do STOSu.
+    
+    Parsuje skrypt problemu i wyciąga informacje o testach, kompilacji i dodatkowych plikach.
+    
+    Args:
+        script (str): Treść skryptu
+    
+    Returns:
+        Tuple[Dict[int, Dict[str, Any]], List[str]]: Krotka zawierająca:
+            - Słownik z danymi testów (indeks testu -> konfiguracja testu)
+            - Lista dodatkowych plików (nagłówki i źródła)
+    """
     lines = script.split("\n")
     add_files: List[str] = []
     test_id = 0
@@ -146,6 +158,19 @@ def extract_raw_problem_script(script: str) -> Tuple[Dict[int, Dict[str, Any]], 
     return rv, add_files
 
 def parse_script(script: str, problem_id: str) -> Optional[ProblemSpecificationSchema]:
+    """Parsuje skrypt i zwraca specyfikację problemu.
+    
+    Konwertuje surowy skrypt problemu na obiekt ProblemSpecificationSchema zawierający
+    listę testów z limitami czasu i pamięci.
+    
+    Args:
+        script (str): Treść skryptu.
+        problem_id (str): Identyfikator problemu.
+    
+    Returns:
+        Optional[ProblemSpecificationSchema]: Obiekt specyfikacji problemu lub None,
+            jeśli skrypt jest pusty lub wystąpił błąd parsowania.
+    """
     if script.strip() == "":
         return None
 
