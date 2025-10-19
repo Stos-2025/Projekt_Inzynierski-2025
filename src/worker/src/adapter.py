@@ -16,6 +16,14 @@ QUEUE_COMPILER_DICT: Dict[str, str] = json.loads(os.environ["QUEUE_COMPILER_DICT
 
 
 def fetch_submission(destination_directory: str) -> Optional[SubmissionSchema]:
+    """Pobiera submisję z API STOS GUI.
+    
+    Args:
+        destination_directory (str): Ścieżka do katalogu docelowego.
+    
+    Returns:
+        Optional[SubmissionSchema]: Obiekt submisji lub None, jeśli submisja nie została znaleziona.
+    """
     submission_workspace = f'/tmp/submission'
     submission_temp_zip_path = os.path.join(submission_workspace, "src.zip")
 
@@ -62,6 +70,15 @@ def fetch_submission(destination_directory: str) -> Optional[SubmissionSchema]:
     return None
 
 def report_result(submission_id: str, result: SubmissionResultSchema) -> None:
+    """Raportuje wynik oceny submisji do API STOS GUI.
+    
+    Args:
+        submission_id (str): ID submisji.
+        result (SubmissionResultSchema): Wynik oceny submisji.
+    
+    Returns:
+        None
+    """
     guiResult = StosGuiResultSchema(
         result=result_formatter.get_result_formatted(result),
         info=result_formatter.get_info_formatted(result),
@@ -72,6 +89,16 @@ def report_result(submission_id: str, result: SubmissionResultSchema) -> None:
     print(f"Reported result for submission {submission_id} with score {result_formatter.get_result_score(result)}, response: {msg}")     
 
 def fetch_problem(problem_id: str, destination_directory: str, lib_destination_directory: Optional[str]=None) -> ProblemSpecificationSchema:
+    """Pobiera problem z API STOS GUI.
+    
+    Args:
+        problem_id (str): ID problemu.
+        destination_directory (str): Ścieżka do katalogu docelowego.
+        lib_destination_directory (Optional[str]): Ścieżka do katalogu docelowego bibliotek.
+    
+    Returns:
+        ProblemSpecificationSchema: Obiekt specyfikacji problemu.
+    """
 
     # initializing workspace
     problem_workspace = f'/tmp/problem'
