@@ -33,9 +33,9 @@ int main() {
 }
 ```
 
-## `malicious_code_2.c`: Bomba Widelcowa (Fork Bomb)
+## `malicious_code_2.c`: Fork bomba (Fork Bomb)
 
-Ten program tworzy klasyczną bombę widelcową. W nieskończonej pętli tworzy nowe procesy, co prowadzi do wyczerpania zasobów systemowych i potencjalnie do awarii systemu.
+Ten program tworzy klasyczną fork bombe. W nieskończonej pętli tworzy nowe procesy, co prowadzi do wyczerpania zasobów systemowych i potencjalnie do awarii systemu.
 
 ```c
 #include <unistd.h>
