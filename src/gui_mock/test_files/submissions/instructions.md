@@ -21,7 +21,7 @@ Ten folder zawiera przykłady złośliwego kodu w językach Python i C, które m
 
 *   **`malicious_code_1.py`:** Sprawdź, czy system uniemożliwia odczyt wrażliwych plików. W logach workera powinieneś zobaczyć błąd dostępu do pliku.
 
-*   **`malicious_code_2.py`:** Ten skrypt spowoduje bombę widelcową. Obserwuj, czy system jest w stanie ograniczyć zużycie zasobów i zapobiec awarii całego systemu.
+*   **`malicious_code_2.py`:** Ten skrypt spowoduje fork bombe. Obserwuj, czy system jest w stanie ograniczyć zużycie zasobów i zapobiec awarii całego systemu.
 
 *   **`malicious_code_3.py`:** Ten skrypt próbuje utworzyć odwrotną powłokę. Sprawdź, czy reguły sieciowe systemu blokują to połączenie.
 
@@ -29,6 +29,6 @@ Ten folder zawiera przykłady złośliwego kodu w językach Python i C, które m
 
 *   **`malicious_code_1.c`:** Podobnie jak w przypadku wersji w Pythonie, sprawdź, czy system uniemożliwia odczyt wrażliwych plików.
 
-*   **`malicious_code_2.c`:** Ten program spowoduje bombę widelcową. Obserwuj, czy system jest w stanie ograniczyć zużycie zasobów.
+*   **`malicious_code_2.c`:** Ten program spowoduje fork bombe. Obserwuj, czy system jest w stanie ograniczyć zużycie zasobów.
 
 *   **`malicious_code_3.c`:** Ten program próbuje utworzyć odwrotną powłokę. Sprawdź, czy reguły sieciowe systemu blokują to połączenie.
