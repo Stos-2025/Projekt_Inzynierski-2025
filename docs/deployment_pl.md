@@ -23,7 +23,7 @@ STOS_GID=993    # ID grupy stos2025 - uprawnienia do katalogu roboczego
 
 # obrazy Docker
 EXEC_IMAGE_NAME=d4m14n/stos:exec-1.0.0    # obraz do uruchamiania zadań
-JUDGE_IMAGE_NAME=d4m14n/stos:judge-1.0.0    # obraz do oceniania 
+JUDGE_IMAGE_NAME=d4m14n/stos:judge-1.0.0    # obraz do oceniania
 QUEUE_COMPILER_DICT={"stos2025": "d4m14n/stos:gpp_comp-1.0.0", "stos2025-python": "d4m14n/stos:python3_comp-1.0.0"}    # mapowanie kolejek -> obrazy kompilatorów
 
 IS_DEBUG_MODE_ENABLED=true
@@ -31,7 +31,7 @@ IS_DEBUG_MODE_ENABLED=true
 
 ## Stworzenie grupy systemowej i katalogu roboczego
 
-Poniżej przykładowe polecenia do utworzenia grupy systemowej `stos2025`, katalogu roboczego oraz nadania niezbędnych uprawnień. 
+Poniżej przykładowe polecenia do utworzenia grupy systemowej `stos2025`, katalogu roboczego oraz nadania niezbędnych uprawnień.
 
 ```bash
 # (1) utwórz grupę 'stos2025' - jeśli grupa już istnieje, polecenie nic nie zrobi, np.
@@ -42,19 +42,18 @@ sudo mkdir -p /home/stos/Projekt_Inzynierski-2025/stos_files
 
 # (3) przypisz grupę 'stos2025' do katalogu i ustaw prawa (2 = setgid, zapewnia dziedziczenie grupy dla nowych plików), np.
 sudo chown -R :stos2025 /home/stos/Projekt_Inzynierski-2025/stos_files
-sudo chmod -R 2775 /home/stos/Projekt_Inzynierski-2025/stos_files
 
-# (4) sprawdź ID grupy 'stos2025' 
+# (4) sprawdź ID grupy 'stos2025'
 getent group stos2025 | cut -d: -f3    # wyświetli GID grupy 'stos2025'
 ```
 
 ## Budowa obrazów
 
 ```bash
-docker compose -f ./src/compose.yml up --build  
+docker compose -f ./src/compose.yml up --build
 ```
 
-lub 
+lub
 
 ```bash
 docker compose -f ./src/compose.yml build
