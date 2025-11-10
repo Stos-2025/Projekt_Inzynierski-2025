@@ -159,15 +159,7 @@ def fetch_problem(
     # fetching problem files
     file_list = gui_client.get_problems_files_list(problem_id, GUI_URL, TIMEOUT)
     for file_name in file_list:
-        if file_name.endswith(".in"):
-            gui_client.get_file(
-                file_name,
-                problem_id,
-                os.path.join(destination_directory, file_name),
-                GUI_URL,
-                TIMEOUT,
-            )
-        elif file_name.endswith(".out"):
+        if file_name.endswith(".in") or file_name.endswith(".out"):
             gui_client.get_file(
                 file_name,
                 problem_id,
@@ -177,9 +169,16 @@ def fetch_problem(
             )
         elif file_name == "script.txt":
             gui_client.get_file(
+                file_name,
+                problem_id,
+                os.path.join(destination_directory, file_name),
+                GUI_URL,
+                TIMEOUT,
+            )
+            gui_client.get_file(
                 file_name, problem_id, tmp_script_path, GUI_URL, TIMEOUT
             )
-        elif lib_destination_directory:
+        elif lib_destination_directory is not None:
             gui_client.get_file(
                 file_name,
                 problem_id,

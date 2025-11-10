@@ -204,12 +204,15 @@ def parse_script(script: str, problem_id: str) -> Optional[ProblemSpecificationS
     try:
         result, _ = extract_raw_problem_script(script)  # type: ignore
         tests: List[TestSpecificationSchema] = []
-        for _, value in result.items():
+        for key, value in result.items():
             test = TestSpecificationSchema(
                 test_name=str(value.get("input")).replace(".in", ""),
                 time_limit=value.get("time"),  # type: ignore
                 total_memory_limit=(value.get("mem") or 256) * 1024,
             )
+            # tmp fix for test names
+            if(test.test_name == "%TESTID%"):
+                test.test_name = f"{key}"
             tests.append(test)
 
         problem_specification = ProblemSpecificationSchema(id=problem_id, tests=tests)
@@ -225,27 +228,10 @@ if __name__ == "__main__":
     script = """
 ##STOS_AUTOMATIC_SCRIPT_1_4##
 CU
-TST test.exe 500 262144 +info.txt program.out 1.in
-JUN judge.exe program.out 1.out 1.in info.txt %TESTID% 10
-TST test.exe 500 262144 +info.txt program.out 2.in
-JUN judge.exe program.out 2.out 2.in info.txt %TESTID% 10
-TST test.exe 500 262144 +info.txt program.out 3.in
-JUN judge.exe program.out 3.out 3.in info.txt %TESTID% 10
-CO
-TST fastheap test.exe 500 262144 +info.txt program.out 4.in
-JUN judge.exe program.out 4.out 4.in info.txt %TESTID% 10
-TST fastheap test.exe 500 262144 +info.txt program.out 5.in
-JUN judge.exe program.out 5.out 5.in info.txt %TESTID% 10
-TST fastheap test.exe 500 262144 +info.txt program.out 6.in
-JUN judge.exe program.out 6.out 6.in info.txt %TESTID% 10
-TST fastheap test.exe 1000 262144 +info.txt program.out 7.in
-JUN judge.exe program.out 7.out 7.in info.txt %TESTID% 10
-TST fastheap test.exe 3000 262144 +info.txt program.out 8.in
-JUN judge.exe program.out 8.out 8.in info.txt %TESTID% 10
-TST fastheap test.exe 3000 262144 +info.txt program.out 9.in
-JUN judge.exe program.out 9.out 9.in info.txt %TESTID% 10
-TST fastheap test.exe 3000 262144 +info.txt program.out 10.in
-JUN judge.exe program.out 10.out 10.in info.txt %TESTID% 10
+TST test.exe 500 262144 +info.txt program.out %TESTID%.in
+JUN judge.exe program.out %TESTID%.out %TESTID%.in info.txt %TESTID%
+TST test.exe 500 262144 +info.txt program.out %TESTID%.in
+JUN judge.exe program.out %TESTID%.out %TESTID%.in info.txt %TESTID%
 FIN jfinal.exe
 WR infoformat=html
 WR time=%TIME%
