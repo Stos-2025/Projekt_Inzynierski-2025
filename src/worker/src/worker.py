@@ -162,6 +162,7 @@ def process_submission_workflow(submission: SubmissionSchema) -> Optional[Submis
         )
     except Exception as e:
         workflow_logger.error(f"Error while running compiler container: {e}")
+        return None
 
     # * ----------------------------------
     # * 6. Run execution subcontainer
@@ -203,6 +204,7 @@ def process_submission_workflow(submission: SubmissionSchema) -> Optional[Submis
         )
     except Exception as e:
         workflow_logger.error(f"Error while running execution container: {e}")
+        return None
 
     # * ----------------------------------
     # * 7. Run judge subcontainer
@@ -235,12 +237,14 @@ def process_submission_workflow(submission: SubmissionSchema) -> Optional[Submis
         )
     except Exception as e:
         workflow_logger.error(f"Error while running judge container: {e}")
+        return None
 
     # * ----------------------------------
     # * 8. Fetch results
     # * ----------------------------------
     adapter.try_change_status(submission.id, "fetching results")
     workflow_logger.info(f"Fetching results for submission {submission.id}")
+    
     try:
         result: SubmissionResultSchema = utils.get_results(os.path.join(G.DATA_LOCAL_PATH, "out"))
     except Exception as e:
@@ -252,16 +256,13 @@ def process_submission_workflow(submission: SubmissionSchema) -> Optional[Submis
     workflow_logger.info(
         f"{Ansi.BOLD.value}{G.NAME}{Ansi.RESET.value} has finished processing submission {submission.id}."
     )
-    try:
-        result.debug = utils.fetch_debug_logs(os.path.join(logs_local_path, "worker.log"))
-    except Exception:
-        pass
     adapter.try_change_status(submission.id, "reporting result")
     return result
 
 
 def get_and_handle_submission() -> bool:
     submission_local_path: str = os.path.join(G.DATA_LOCAL_PATH, "src")
+    logs_local_path: str = os.path.join(G.DATA_LOCAL_PATH, "logs")
 
     # * ----------------------------------
     # * 1. Initialize worker files
@@ -297,8 +298,18 @@ def get_and_handle_submission() -> bool:
         result = SubmissionResultSchema(points=0, test_results=[], info="error during processing submission")
 
     # * ----------------------------------
-    # * 4. Report result
+    # * 4. Fetch debug logs
     # * ----------------------------------
+
+    try:
+        result.debug = utils.fetch_debug_logs(os.path.join(logs_local_path, "worker.log"))
+    except Exception:
+        G.WORKER_LOGGER.warning("Fetching debug logs failed.")
+    
+    # * ----------------------------------
+    # * 5. Report result
+    # * ----------------------------------
+
     try:
         adapter.report_result(submission.id, result)
     # Handle specific HTTP 400 errors separately
@@ -314,7 +325,7 @@ def get_and_handle_submission() -> bool:
         return False
 
     # * ----------------------------------
-    # * 5. Archive worker files (debug mode)
+    # * 6. Archive worker files (debug mode)
     # * ----------------------------------
     if G.IS_DEBUG_MODE_ENABLED:
         try:

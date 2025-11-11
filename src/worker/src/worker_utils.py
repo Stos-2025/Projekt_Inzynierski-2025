@@ -229,8 +229,9 @@ def run_container(
         },
     )
 
-    log_stream = container.logs(stream=True, follow=True)
-    for line in log_stream:
-        G.WORKER_LOGGER.info(f">> {container.name}: {line.decode().rstrip()}")
+    # log_stream = container.logs(stream=True, follow=True)
+    # for line in log_stream:
+    #     G.WORKER_LOGGER.info(f">> {container.name}: {line.decode('utf-8', errors='replace').rstrip()}")
+    
     container.wait(timeout=timeout)
         
