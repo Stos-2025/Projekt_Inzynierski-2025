@@ -247,3 +247,12 @@ def notify(submission_id: str, message: str, gui_url: str, timeout: Timeout) -> 
     # sending POST request to the qapi endpoint
     with requests.post(qapi_url, params=params, data=data, timeout=timeout) as response:
         response.raise_for_status()
+
+
+def mark_as_completed(submission_id: str, gui_url: str, timeout: Timeout) -> None:
+    qapi_url: str = urljoin(gui_url, QAPI_ENDPOINT)
+    params: Dict[str, str] = {"f": "result", "id": submission_id}
+
+    # sending GET request to the qapi endpoint
+    with requests.get(qapi_url, params=params, timeout=timeout) as response:
+        response.raise_for_status()

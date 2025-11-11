@@ -7,8 +7,8 @@ The parser handles various STOS script commands including compilation settings,
 test specifications, judge configurations, and file additions.
 """
 
+from globals import Globals as G
 from typing import Any, Dict, List, Optional, Tuple
-
 from common.schemas import ProblemSpecificationSchema, TestSpecificationSchema
 
 
@@ -219,7 +219,7 @@ def parse_script(script: str, problem_id: str) -> Optional[ProblemSpecificationS
 
         return problem_specification
     except Exception as e:
-        print(f"An error occurred while parsing the script: {e}")
+        G.WORKER_LOGGER.error(f"An error occurred while parsing the script: {e}")
         return None
 
 

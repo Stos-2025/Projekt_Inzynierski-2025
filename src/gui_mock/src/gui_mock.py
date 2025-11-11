@@ -6,8 +6,8 @@ import os
 
 
 # SKIP = 192
-SKIP = 300
-LIMIT = 100
+SKIP = 215
+LIMIT = 50
 SET = 1
 SUBMISSIONS = f"test_files/submissions-{SET}"
 TESTS = f"test_files/tests-{SET}"

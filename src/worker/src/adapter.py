@@ -13,6 +13,7 @@ import json
 import shutil
 import zipfile
 import common.utils
+from globals import Globals as G
 from typing import Dict, Optional
 import script_parser as script_parser
 import stos_gui_api_client as gui_client
@@ -70,7 +71,7 @@ def fetch_submission(destination_directory: str) -> Optional[SubmissionSchema]:
                 queue_name, submission_temp_zip_path, GUI_URL, TIMEOUT
             )
         except Exception as e:
-            print(
+            G.WORKER_LOGGER.error(
                 f"An error occurred while fetching the submission from {queue_name}: {e} continuing to next queue..."
             )
             continue
@@ -96,6 +97,22 @@ def fetch_submission(destination_directory: str) -> Optional[SubmissionSchema]:
 
     return None
 
+def try_mark_as_completed(submission_id: str) -> None:
+    """Mark a submission as completed in the STOS GUI API.
+
+    Notifies the STOS GUI API that the specified submission has been
+    fully processed and its result has been reported.
+
+    Args:
+        submission_id (str): Unique identifier of the submission.
+    
+    Returns:
+        None
+    """
+    try:
+        gui_client.mark_as_completed(submission_id, GUI_URL, TIMEOUT)
+    except Exception:
+        pass
 
 def report_result(submission_id: str, result: SubmissionResultSchema) -> None:
     """Report submission evaluation result to the STOS GUI API.
@@ -118,13 +135,23 @@ def report_result(submission_id: str, result: SubmissionResultSchema) -> None:
     gui_client.post_result(submission_id, guiResult, GUI_URL, TIMEOUT)
 
 
-def change_status(submission_id: str, new_status: str) -> None:
+def try_change_status(submission_id: str, new_status: str) -> None:
+    """Change the status of a submission in the STOS GUI API.
+
+    Updates the status of a submission in the STOS GUI API to reflect
+    its current processing state.
+
+    Args:
+        submission_id (str): Unique identifier of the submission.
+        new_status (str): New status to set for the submission.
+
+    Returns:
+        None
+    """
     try:
         gui_client.notify(submission_id, new_status, GUI_URL, TIMEOUT)
-    except Exception as e:
-        print(
-            f"An error occurred while changing status to {new_status} for submission {submission_id}: {e}"
-        )
+    except Exception:
+        pass
 
 
 def fetch_problem(

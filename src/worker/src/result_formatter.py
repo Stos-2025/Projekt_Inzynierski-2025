@@ -132,6 +132,8 @@ def get_info_formatted(result: SubmissionResultSchema) -> str:
     </table>
 </div>
     """
+    else:
+        info_content += "<strong>Compilation error.</strong>"
     if result.info:
         # todo: handle html escaping properly --- IGNORE ---
         converter = ansi2html.Ansi2HTMLConverter(inline=True)
