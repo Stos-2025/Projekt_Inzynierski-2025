@@ -1,0 +1,67 @@
+? == 21180
+.ms-Toggle,E,font-family == 'Segoe UI Regular WestEuropean', 'Segoe UI', Tahoma, Arial, sans-serif
+1,S,? == 1
+1,A,? == 1
+1,A,margin == 23px 0 1px 0
+5,A,display == inline-block
+.ms-Label.is-required:after,E,content == ' *'
+8,A,padding == 12px 8px 3px 8px
+display,A,? == 4710
+color,A,? == 6480
+font-family,A,? == 2340
+font-size,A,? == 4080
+box,A,? == 0
+box-sizing,A,? == 1350
+margin,A,? == 1680
+h1,S,? == 0
+width,A,? == 2820
+margin,A,? == 1680
+211,S,? == 2
+211,A,? == 2
+-webkit-transform,A,? == 120
+-ms-transform,A,? == 120
+transform,A,? == 120
+background-color,A,? == 4260
+border-color,A,? == 1050
+border-radius,A,? == 360
+border,A,? == 1380
+box-shadow,A,? == 1080
+box-sizing,A,? == 1350
+color,A,? == 6480
+content,A,? == 810
+cursor,A,? == 1680
+display,A,? == 4710
+font-family,A,? == 2340
+font-size,A,? == 4080
+font-weight,A,? == 1080
+height,A,? == 3420
+left,A,? == 1620
+line-height,A,? == 2040
+list-style-type,A,? == 150
+margin-bottom,A,? == 720
+margin-left,A,? == 570
+margin-right,A,? == 420
+margin-top,A,? == 420
+margin,A,? == 1680
+max-width,A,? == 270
+min-height,A,? == 270
+min-width,A,? == 240
+outline,A,? == 1230
+overflow,A,? == 570
+padding,A,? == 2400
+position,A,? == 3960
+text-align,A,? == 900
+text-decoration,A,? == 150
+text-overflow,A,? == 210
+top,A,? == 2310
+vertical-align,A,? == 450
+white-space,A,? == 450
+width,A,? == 2820
+z-index,A,? == 870
+.ms-Button-icon,S,? == 30
+.ms-Button-label,S,? == 30
+.ms-Button,S,? == 30
+.ms-Button + .ms-Button,S,? == 30
+.ms-Button.is-disabled .ms-Button-label,S,? == 30
+.ms-Button.is-disabled,S,? == 30
+h5,S,? == 0

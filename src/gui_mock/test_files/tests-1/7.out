@@ -1,0 +1,66 @@
+? == 706
+1,S,? == 1
+1,A,? == 1
+1,A,margin == 23px 0 1px 0
+5,A,display == inline-block
+.ms-Label.is-required:after,E,content == ' *'
+8,A,padding == 12px 8px 3px 8px
+display,A,? == 157
+color,A,? == 216
+font-family,A,? == 78
+font-size,A,? == 136
+box,A,? == 0
+box-sizing,A,? == 45
+margin,A,? == 56
+h1,S,? == 0
+width,A,? == 94
+margin,A,? == 56
+211,S,? == 2
+211,A,? == 2
+-webkit-transform,A,? == 4
+-ms-transform,A,? == 4
+transform,A,? == 4
+background-color,A,? == 142
+border-color,A,? == 35
+border-radius,A,? == 12
+border,A,? == 46
+box-shadow,A,? == 36
+box-sizing,A,? == 45
+color,A,? == 216
+content,A,? == 27
+cursor,A,? == 56
+display,A,? == 157
+font-family,A,? == 78
+font-size,A,? == 136
+font-weight,A,? == 36
+height,A,? == 114
+left,A,? == 54
+line-height,A,? == 68
+list-style-type,A,? == 5
+margin-bottom,A,? == 24
+margin-left,A,? == 19
+margin-right,A,? == 14
+margin-top,A,? == 14
+margin,A,? == 56
+max-width,A,? == 9
+min-height,A,? == 9
+min-width,A,? == 8
+outline,A,? == 41
+overflow,A,? == 19
+padding,A,? == 80
+position,A,? == 132
+text-align,A,? == 30
+text-decoration,A,? == 5
+text-overflow,A,? == 7
+top,A,? == 77
+vertical-align,A,? == 15
+white-space,A,? == 15
+width,A,? == 94
+z-index,A,? == 29
+.ms-Button-icon,S,? == 1
+.ms-Button-label,S,? == 1
+.ms-Button,S,? == 1
+.ms-Button + .ms-Button,S,? == 1
+.ms-Button.is-disabled .ms-Button-label,S,? == 1
+.ms-Button.is-disabled,S,? == 1
+h5,S,? == 17
