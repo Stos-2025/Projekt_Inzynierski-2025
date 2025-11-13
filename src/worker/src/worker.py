@@ -23,6 +23,23 @@ from common.schemas import SubmissionResultSchema, SubmissionSchema, VolumeMappi
 
 
 def initialize_globals() -> None:
+    """Initialize global configuration and state for the worker.
+    
+    Sets up the worker's global configuration by initializing the logger,
+    Docker client, resource limits, and environment-specific settings.
+    Reads configuration from environment variables and validates the
+    Docker connection. Go to globals.py for more details.
+    
+    This function must be called before any other worker operations to
+    ensure all global state is properly configured.
+    
+    Returns:
+        None
+        
+    Raises:
+        KeyError: If required environment variables are not set.
+        docker.errors.DockerException: If Docker client cannot be initialized or connection fails.
+    """
     G.WORKER_LOGGER = get_logger("worker", None, std_enabled=True)
     G.CLIENT = docker.from_env()
     G.CLIENT.ping()  # type: ignore
@@ -261,6 +278,24 @@ def process_submission_workflow(submission: SubmissionSchema) -> Optional[Submis
 
 
 def get_and_handle_submission() -> bool:
+    """Fetch and process a single submission through the complete workflow.
+    
+    This function orchestrates the entire submission processing lifecycle:
+    1. Initializes worker filesystem structure
+    2. Fetches a submission from the queue
+    3. Processes it through the evaluation workflow
+    4. Collects debug logs
+    5. Reports results back to the API
+    6. Archives files if debug mode is enabled
+    
+    The function implements robust error handling at each stage, logging
+    errors and attempting to continue or gracefully fail as appropriate.
+    
+    Returns:
+        bool: True if a submission was successfully processed and reported,
+            False if no submission was available or an error occurred that
+            should trigger backoff in the polling loop.
+    """
     submission_local_path: str = os.path.join(G.DATA_LOCAL_PATH, "src")
     logs_local_path: str = os.path.join(G.DATA_LOCAL_PATH, "logs")
 

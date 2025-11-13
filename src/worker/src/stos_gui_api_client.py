@@ -250,6 +250,23 @@ def notify(submission_id: str, message: str, gui_url: str, timeout: Timeout) -> 
 
 
 def mark_as_completed(submission_id: str, gui_url: str, timeout: Timeout) -> None:
+    """Mark a submission as completed in the STOS GUI queue.
+    
+    Sends a completion notification to the STOS GUI queue API to mark
+    the specified submission as finished. This is typically called after
+    results have been successfully reported.
+    
+    Args:
+        submission_id (str): Unique identifier of the submission to mark as completed.
+        gui_url (str): Base URL of the STOS GUI.
+        timeout (Timeout): Request timeout configuration.
+    
+    Returns:
+        None
+    
+    Raises:
+        requests.HTTPError: If the HTTP request fails.
+    """
     qapi_url: str = urljoin(gui_url, QAPI_ENDPOINT)
     params: Dict[str, str] = {"f": "result", "id": submission_id}
 
