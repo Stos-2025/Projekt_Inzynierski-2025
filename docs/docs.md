@@ -201,6 +201,50 @@ volumes = {volume.key(): volume.value()}
 
 ---
 
+#### 1.8. ExecOutputSchema
+
+Reprezentuje wyjście z wykonania programu wraz z metrykami wydajności.
+
+**Pola:**
+
+- `return_code: int` - Kod wyjścia zwrócony przez wykonany program
+- `signal: Optional[int]` - Numer sygnału jeśli program został zakończony przez sygnał (opcjonalnie)
+- `user_time: Optional[float]` - Czas CPU użyty przez program w trybie użytkownika, w sekundach (opcjonalnie)
+- `total_memory: Optional[int]` - Całkowita pamięć użyta przez program w bajtach (opcjonalnie)
+
+**Przykład użycia:**
+
+```python
+exec_output = ExecOutputSchema(
+    return_code=0,
+    signal=None,
+    user_time=0.234,
+    total_memory=4096000
+)
+```
+
+---
+
+#### 1.9. JudgeOutputSchema
+
+Reprezentuje wynik oceny sędziego (judge) po porównaniu wyjścia programu z oczekiwanym wynikiem.
+
+**Pola:**
+
+- `grade: bool` - Czy test został zaliczony (True) czy nie (False), domyślnie: False
+- `info: Optional[str]` - Dodatkowe informacje o wyniku oceny (opcjonalnie)
+
+**Przykład użycia:**
+
+```python
+judge_output = JudgeOutputSchema(
+    grade=True,
+    info="Output matches expected result"
+)
+```
+
+---
+
 ### 2. Enumy (`enums.py`)
 
 #### 2.1. SubmissionStatus
@@ -367,6 +411,57 @@ def is_valid_destination_directory_path(destination_directory_path: str) -> bool
 ## Moduł Worker - Przetwarzanie Zgłoszeń
 
 Moduł Worker odpowiada za przetwarzanie zgłoszeń studentów w systemie STOS. Obejmuje integrację z API GUI, przetwarzanie wyników, parsowanie skryptów i logowanie.
+
+### 0. Globals - Konfiguracja Globalna (`globals.py`)
+
+Moduł globals definiuje klasę Globals, która służy jako scentralizowany kontener dla wszystkich globalnych parametrów konfiguracyjnych, instancji klientów i stanu runtime używanych w aplikacji worker.
+
+#### 0.1. Klasa Globals
+
+Kontener dla globalnej konfiguracji i stanu runtime workera STOS.
+
+**Opis:**
+
+Klasa Globals utrzymuje wszystkie globalne parametry konfiguracyjne, instancje klientów i stan runtime jako atrybuty na poziomie klasy. Jest używana do współdzielenia stanu między różnymi modułami aplikacji worker.
+
+**Atrybuty konfiguracyjne:**
+
+- `POOLING_INTERVAL: float` - Czas w sekundach oczekiwania między sprawdzaniem zgłoszeń
+- `POOLING_INTERVAL_MAX: float` - Maksymalny czas backoff w sekundach gdy brak dostępnych zgłoszeń
+- `FETCH_TIMEOUT: tuple[int, int]` - Krotka (connect, read) timeout w sekundach dla żądań API
+- `CONTAINERS_TIMEOUT: int` - Maksymalny czas wykonania w sekundach dla kontenerów Docker
+- `CONTAINERS_FILE_SIZE_LIMIT: str` - Limit rozmiaru pliku dla kontenerów (np. "5g")
+- `CONTAINERS_MEMORY_LIMIT: str` - Limit pamięci dla kontenerów (np. "512m")
+
+**Atrybuty runtime:**
+
+- `WORKER_LOGGER: Logger` - Instancja loggera dla operacji workera
+- `CLIENT: docker.DockerClient` - Klient Docker do zarządzania kontenerami
+- `HOSTNAME: str` - Hostname bieżącego kontenera workera
+- `STOS_GID: Optional[str]` - Opcjonalne ID grupy dla uprawnień plików STOS
+- `NAME: str` - Przyjazna nazwa instancji workera
+- `DATA_LOCAL_PATH: str` - Ścieżka lokalnego systemu plików dla danych workera
+- `DATA_HOST_PATH: str` - Ścieżka systemu plików hosta dla danych workera
+- `IS_DEBUG_MODE_ENABLED: bool` - Czy tryb debugowania jest włączony dla dodatkowego logowania
+- `EXEC_IMAGE: str` - Nazwa obrazu Docker dla kontenerów EXEC
+- `JUDGE_IMAGE: str` - Nazwa obrazu Docker dla konenerow JUDGE
+
+**Przykład użycia:**
+
+```python
+from globals import Globals as G
+
+# Inicjalizacja (wykonywana raz podczas startu)
+G.WORKER_LOGGER = get_logger("worker", None, std_enabled=True)
+G.CLIENT = docker.from_env()
+G.POOLING_INTERVAL = 0.5
+
+# Późniejsze użycie w innych modułach
+G.WORKER_LOGGER.info("Processing submission...")
+container = G.CLIENT.containers.run(G.EXEC_IMAGE, ...)
+```
+
+---
 
 ### 1. Adapter (`adapter.py`)
 
@@ -582,6 +677,65 @@ def get_submission(
 
 ---
 
+#### 2.5. notify()
+
+Wysyła powiadomienie dla konkretnego zgłoszenia.
+
+```python
+def notify(submission_id: str, message: str, gui_url: str, timeout: Timeout) -> None:
+    """
+    Wysyła wiadomość powiadomienia do API kolejki GUI STOS dla danego zgłoszenia.
+
+    Args:
+        submission_id: Unikalny identyfikator zgłoszenia
+        message: Wiadomość powiadomienia do wysłania
+        gui_url: Bazowy URL GUI STOS
+        timeout: Konfiguracja timeout żądania
+
+    Returns:
+        None
+
+    Raises:
+        requests.HTTPError: Jeśli żądanie HTTP się nie powiedzie
+    """
+```
+
+---
+
+#### 2.6. mark_as_completed()
+
+Oznacza zgłoszenie jako zakończone w kolejce GUI STOS.
+
+```python
+def mark_as_completed(submission_id: str, gui_url: str, timeout: Timeout) -> None:
+    """
+    Wysyła powiadomienie o zakończeniu do API kolejki GUI STOS, aby oznaczyć
+    określone zgłoszenie jako zakończone.
+
+    Args:
+        submission_id: Unikalny identyfikator zgłoszenia do oznaczenia jako zakończone
+        gui_url: Bazowy URL GUI STOS
+        timeout: Konfiguracja timeout żądania
+
+    Returns:
+        None
+
+    Raises:
+        requests.HTTPError: Jeśli żądanie HTTP się nie powiedzie
+    """
+```
+
+**Przykład użycia:**
+
+```python
+try:
+    mark_as_completed("sub_12345", gui_url, timeout)
+except requests.HTTPError:
+    logger.error("Failed to mark submission as completed")
+```
+
+---
+
 ### 3. Parser Skryptów (`script_parser.py`)
 
 Zapewnia funkcjonalność parsowania skryptów specyfikacji problemów STOS.
@@ -780,6 +934,110 @@ def flush_logger(logger: logging.Logger) -> None:
     Returns:
         None
     """
+```
+
+---
+
+### 6. Worker Core (`worker.py`)
+
+Główny moduł worker zawierający logikę przetwarzania zgłoszeń i zarządzania cyklem życia workera.
+
+#### 6.1. initialize_globals()
+
+Inicjalizuje globalną konfigurację i stan dla workera.
+
+```python
+def initialize_globals() -> None:
+    """
+    Ustawia globalną konfigurację workera poprzez inicjalizację loggera,
+    klienta Docker, limitów zasobów i ustawień specyficznych dla środowiska.
+
+    Funkcja musi być wywołana przed jakimikolwiek innymi operacjami workera,
+    aby zapewnić prawidłową konfigurację całego stanu globalnego.
+
+    Returns:
+        None
+
+    Raises:
+        KeyError: Jeśli wymagane zmienne środowiskowe nie są ustawione
+        docker.errors.DockerException: Jeśli klient Docker nie może być zainicjalizowany
+            lub połączenie się nie powiedzie
+    """
+```
+
+**Proces inicjalizacji:**
+
+1. **Logger** - Konfiguruje główny logger workera z wyjściem do stdout
+2. **Klient Docker** - Inicjalizuje połączenie z Dockerem i weryfikuje dostępność
+3. **Limity zasobów** - Ustawia timeouty, limity pamięci i CPU dla kontenerów
+4. **Zmienne środowiskowe** - Wczytuje konfigurację z środowiska (ścieżki, obrazy, tryb debug)
+
+**Przykład użycia:**
+
+```python
+def main():
+    try:
+        initialize_globals()
+        G.WORKER_LOGGER.info("Worker initialized successfully")
+        mainloop()
+    except Exception as e:
+        print(f"Failed to initialize worker: {e}")
+        exit(1)
+```
+
+---
+
+#### 6.2. get_and_handle_submission()
+
+Pobiera i przetwarza pojedyncze zgłoszenie przez kompletny workflow.
+
+```python
+def get_and_handle_submission() -> bool:
+    """
+    Orkiestruje cały cykl życia przetwarzania zgłoszenia.
+
+    Proces obejmuje:
+    1. Inicjalizacja struktury katalogów workera
+    2. Pobranie zgłoszenia z kolejki
+    3. Przetworzenie przez workflow ewaluacji
+    4. Zebranie logów debugowania
+    5. Raportowanie wyników z powrotem do API
+    6. Archiwizacja plików jeśli tryb debugowania jest włączony
+
+    Returns:
+        bool: True jeśli zgłoszenie zostało pomyślnie przetworzone i zgłoszone,
+            False jeśli żadne zgłoszenie nie było dostępne lub wystąpił błąd
+
+    Raises:
+        None: Funkcja obsługuje wszystkie wyjątki wewnętrznie i loguje błędy
+    """
+```
+
+**Etapy przetwarzania:**
+
+1. **Inicjalizacja plików** - Tworzy strukturę katalogów (bin, std, out, conf, src, lib, logs, tests)
+2. **Pobranie zgłoszenia** - Pobiera ZIP zgłoszenia z kolejki i rozpakowuje
+3. **Workflow** - Wywołuje `process_submission_workflow()` dla kompilacji, wykonania i oceny
+4. **Logi debug** - Zbiera logi z pliku worker.log
+5. **Raportowanie** - Wysyła wyniki do API GUI
+6. **Archiwizacja** - Kopiuje pliki do katalogu debug (jeśli włączony)
+
+**Obsługa błędów:**
+
+- HTTP 400 - Ignorowany (przestarzałe zgłoszenie)
+- Inne błędy - Logowane i zwracany False dla backoff
+
+**Przykład użycia:**
+
+```python
+def mainloop():
+    backoff = G.POOLING_INTERVAL
+    while True:
+        if get_and_handle_submission():
+            backoff = G.POOLING_INTERVAL  # reset po sukcesie
+        else:
+            time.sleep(backoff)
+            backoff = min(backoff * 2, G.POOLING_INTERVAL_MAX)
 ```
 
 ---
