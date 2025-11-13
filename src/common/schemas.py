@@ -228,6 +228,18 @@ class VolumeMappingSchema(BaseModel):
 
 
 class ExecOutputSchema(BaseModel):
+    """
+    Schema representing the output of a program execution.
+    
+    This class captures the execution metrics and exit status of a program run,
+    including return codes, signals, execution time, and memory usage.
+    
+    Attributes:
+        return_code: Exit code returned by the executed program
+        signal: Signal number if the program was terminated by a signal (optional)
+        user_time: CPU time used by the program in user mode, in seconds (optional)
+        total_memory: Total memory used by the program in bytes (optional)
+    """
     return_code: int
     signal: Optional[int] = None
     user_time: Optional[float] = None
@@ -235,5 +247,16 @@ class ExecOutputSchema(BaseModel):
 
 
 class JudgeOutputSchema(BaseModel):
+    """
+    Schema representing the output of a judge evaluation.
+    
+    This class encapsulates the result of comparing a program's output
+    against the expected answer, including the pass/fail status and
+    additional information about the evaluation.
+    
+    Attributes:
+        grade: Whether the test passed (True) or failed (False), defaults to False
+        info: Additional information about the evaluation result (optional)
+    """
     grade: bool = False
     info: Optional[str] = None

@@ -9,10 +9,11 @@ configurable formatting and automatic handler management.
 """
 
 import logging
+from typing import Optional
 from common.utils import is_valid_destination_file_path
 
 
-def get_logger(func_name: str, log_file_path: str, std_enabled: bool) -> logging.Logger:
+def get_logger(func_name: str, log_file_path: Optional[str], std_enabled: bool) -> logging.Logger:
     """Create and configure a logger with file and optional console output.
 
     Creates a logger instance with proper formatting, file handler for logging
@@ -32,19 +33,20 @@ def get_logger(func_name: str, log_file_path: str, std_enabled: bool) -> logging
         ValueError: If the log file path is invalid.
     """
 
-    if not is_valid_destination_file_path(log_file_path):
-        raise ValueError(f"Invalid log file path: {log_file_path}")
 
     logger = logging.getLogger(func_name)
     if logger.hasHandlers():
         logger.handlers.clear()
     logger.setLevel(logging.DEBUG)
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
 
     # File handler
-    file_handler = logging.FileHandler(log_file_path, mode="a")
-    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-    file_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
+    if log_file_path is not None:
+        if not is_valid_destination_file_path(log_file_path):
+            raise ValueError(f"Invalid log file path: {log_file_path}")
+        file_handler = logging.FileHandler(log_file_path, mode="a")
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
 
     # std handler
     if std_enabled:
