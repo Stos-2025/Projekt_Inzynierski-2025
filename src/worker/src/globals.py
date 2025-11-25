@@ -64,7 +64,7 @@ DATA_HOST_PATH  = os.path.join(require_env("WORKERS_DATA_HOST_PATH"), NAME)
 EXEC_IMAGE: str = require_env("EXEC_IMAGE_NAME")
 JUDGE_IMAGE: str = require_env("JUDGE_IMAGE_NAME")
 QUEUE_COMPILER_DICT: Dict[str, str] = json.loads(
-    os.environ["QUEUE_COMPILER_DICT"]
+    os.environ["QUEUE_COMPILER_DICT"].replace("'", '"')
 )  # todo validate
 
 # --- Logger -------------------------------------------------------------------
