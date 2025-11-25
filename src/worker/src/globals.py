@@ -6,6 +6,7 @@ from logger import get_logger
 from typing import Dict, Optional
 from common.tuples import Timeout
 
+# the order of definitions matters here because of dependencies
 
 def require_env(key: str) -> str:
     """Throw a user-friendly error if an env var is missing."""
@@ -31,7 +32,9 @@ FETCH_TIMEOUT: Timeout = Timeout(5, 10)
 
 # --- Configurable -------------------------------------------------------------
 
-IS_DEBUG_MODE_ENABLED: bool = os.environ.get("IS_DEBUG_MODE_ENABLED", "false").lower() == "true"
+IS_DEBUG_MODE_ENABLED: bool = (
+    os.environ.get("IS_DEBUG_MODE_ENABLED", "false").lower() == "true"
+)
 
 # --- Docker client ------------------------------------------------------------
 

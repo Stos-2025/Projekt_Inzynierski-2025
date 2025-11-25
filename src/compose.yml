@@ -16,7 +16,7 @@ services:
       
       - GUI_URL=${GUI_URL}
       - LOKI_URL=${LOKI_URL}
-      
+
       - QUEUE_COMPILER_DICT=${QUEUE_COMPILER_DICT}
       - STOS_GID=${STOS_GID}
       - IS_DEBUG_MODE_ENABLED=${IS_DEBUG_MODE_ENABLED}
@@ -58,6 +58,7 @@ services:
       - /var/run:/var/run:rw
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
+      
     ports:
       - "8080:8080"
     restart: unless-stopped
