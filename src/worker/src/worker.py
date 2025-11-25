@@ -10,7 +10,6 @@ the evaluation workflow, and reports results back to the STOS GUI API.
 
 import os
 import time
-import docker
 import signal
 import adapter
 import requests
@@ -18,30 +17,10 @@ from typing import Optional
 import worker_utils as utils
 from common.enums import Ansi
 from logger import get_logger
-from globals import Globals as G
+import globals as G
 from common.schemas import SubmissionResultSchema, SubmissionSchema, VolumeMappingSchema
 
 
-def initialize_globals() -> None:
-    G.WORKER_LOGGER = get_logger("worker", None, std_enabled=True)
-    G.CLIENT = docker.from_env()
-    G.CLIENT.ping()  # type: ignore
-
-    G.POOLING_INTERVAL = 500e-3  # seconds
-    G.POOLING_INTERVAL_MAX = 60  # seconds
-    G.FETCH_TIMEOUT = (5, 15)  # seconds
-    G.CONTAINERS_TIMEOUT = 250  # seconds
-    G.CONTAINERS_FILE_SIZE_LIMIT = "5g"
-    G.CONTAINERS_MEMORY_LIMIT = "512m"
-
-    G.HOSTNAME = os.environ["HOSTNAME"]
-    G.STOS_GID = os.environ.get("STOS_GID")
-    G.NAME = G.CLIENT.containers.get(G.HOSTNAME).name or G.HOSTNAME
-    G.DATA_LOCAL_PATH = os.path.join(os.environ["WORKERS_DATA_LOCAL_PATH"], G.NAME)
-    G.DATA_HOST_PATH = os.path.join(os.environ["WORKERS_DATA_HOST_PATH"], G.NAME)
-    G.IS_DEBUG_MODE_ENABLED = os.environ.get("IS_DEBUG_MODE_ENABLED", "false").lower() == "true"
-    G.EXEC_IMAGE = os.environ["EXEC_IMAGE_NAME"]
-    G.JUDGE_IMAGE = os.environ["JUDGE_IMAGE_NAME"]
 
 
 def process_submission_workflow(submission: SubmissionSchema) -> Optional[SubmissionResultSchema]:
@@ -64,6 +43,7 @@ def process_submission_workflow(submission: SubmissionSchema) -> Optional[Submis
     problem_host_path: str = os.path.join(G.DATA_HOST_PATH, "tests")
     lib_host_path: str = os.path.join(G.DATA_HOST_PATH, "lib")
     conf_host_path = os.path.join(G.DATA_HOST_PATH, "conf")
+    logs_host_path = os.path.join(G.DATA_HOST_PATH, "logs")
 
     artifacts_bin_host_path = os.path.join(G.DATA_HOST_PATH, "bin")
     artifacts_std_host_path = os.path.join(G.DATA_HOST_PATH, "std")
@@ -139,9 +119,12 @@ def process_submission_workflow(submission: SubmissionSchema) -> Optional[Submis
             environment={
                 "SRC": "/data/src",
                 "LIB": "/data/lib",
-                "OUT": "/data/out",
-                "BIN": "/data/bin",
                 "MAINFILE": submission.mainfile or "main.py",
+
+                "OUT": "/data/out/comp.json",
+                "INF": "/data/out/info.txt",
+                "BIN": "/data/bin/program",
+                "LOG": "/data/logs/compilation.log",
             },
             volume_mappings=[
                 VolumeMappingSchema(host_path=submission_host_path, container_path="/data/src"),
@@ -154,6 +137,11 @@ def process_submission_workflow(submission: SubmissionSchema) -> Optional[Submis
                 VolumeMappingSchema(
                     host_path=artifacts_out_host_path,
                     container_path="/data/out",
+                    read_only=False,
+                ),
+                VolumeMappingSchema(
+                    host_path=logs_host_path,
+                    container_path="/data/logs",
                     read_only=False,
                 ),
             ],
@@ -371,10 +359,6 @@ def main() -> None:
 
     signal.signal(signal.SIGINT, lambda s, f: exit(0))
     signal.signal(signal.SIGTERM, lambda s, f: exit(0))
-    try:
-        initialize_globals()
-    except Exception:
-        exit(1)
     mainloop()
 
 

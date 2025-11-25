@@ -7,7 +7,7 @@ The parser handles various STOS script commands including compilation settings,
 test specifications, judge configurations, and file additions.
 """
 
-from globals import Globals as G
+import globals as G
 from typing import Any, Dict, List, Optional, Tuple
 from common.schemas import ProblemSpecificationSchema, TestSpecificationSchema
 

@@ -11,7 +11,7 @@ import docker
 import shutil
 from natsort import natsorted
 from docker.types import Ulimit
-from globals import Globals as G
+import globals as G
 from typing import Dict, List, Optional
 from common.schemas import (
     ExecOutputSchema,
@@ -57,7 +57,7 @@ def get_results(path: str) -> SubmissionResultSchema:
 
     def try_fetch_compilation_info(path: str) -> Optional[str]:
         maximum_content_length = 2 * 5000
-        comp_file_path = os.path.join(path, "comp.txt")
+        comp_file_path = os.path.join(path, "info.txt")
         try:
             with open(comp_file_path, "r", encoding="utf-8", errors="ignore") as f:
                 content = ""

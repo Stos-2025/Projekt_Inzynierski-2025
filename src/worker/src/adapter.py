@@ -9,16 +9,15 @@ and data transformation between API responses and internal schemas.
 """
 
 import os
-import json
 import shutil
 import zipfile
 import common.utils
-from globals import Globals as G
+import globals as G
 from typing import Dict, Optional
 import script_parser as script_parser
 import stos_gui_api_client as gui_client
 import result_formatter as result_formatter
-from common.tuples import Timeout, StosGuiResultSchema
+from common.tuples import StosGuiResultSchema
 from common.schemas import (
     ProblemSpecificationSchema,
     SubmissionSchema,
@@ -26,11 +25,9 @@ from common.schemas import (
 )
 
 
-TIMEOUT = Timeout(5, 10)  # FETCH_TIMEOUT
-GUI_URL = os.environ["GUI_URL"]
-QUEUE_COMPILER_DICT: Dict[str, str] = json.loads(
-    os.environ["QUEUE_COMPILER_DICT"]
-)  # todo validate
+TIMEOUT = G.FETCH_TIMEOUT # FETCH_TIMEOUT
+GUI_URL = G.GUI_URL
+QUEUE_COMPILER_DICT: Dict[str, str] = G.QUEUE_COMPILER_DICT
 
 
 def fetch_submission(destination_directory: str) -> Optional[SubmissionSchema]:
