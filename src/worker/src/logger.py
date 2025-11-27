@@ -78,7 +78,7 @@ def get_logger(func_name: str, log_file_path: Optional[str], std_enabled: bool) 
         logger.handlers.clear()
     logger.setLevel(logging.DEBUG)
     formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-    
+
     # File handler
     if log_file_path is not None:
         if not is_valid_destination_file_path(log_file_path):

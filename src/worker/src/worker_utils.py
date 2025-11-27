@@ -11,6 +11,7 @@ import docker
 import shutil
 from natsort import natsorted
 from docker.types import Ulimit
+import requests
 import globals as G
 from typing import Dict, List, Optional
 from common.schemas import (
@@ -22,16 +23,16 @@ from common.schemas import (
     VolumeMappingSchema,
 )
 
-def fetch_debug_logs(log_path: Optional[str]) -> Optional[str]:
+def fetch_debug_logs(log_path: Optional[str], maximum_content_length: int = 10_000) -> Optional[str]:
     """Fetch debug logs from the specified path.
-
     Args:
         log_path (Optional[str]): Path to the log file.
+        maximum_content_length (int): Maximum length of the log content to fetch.
 
     Returns:
         Optional[str]: Log content or None if file doesn't exist or error occurred.
     """
-    maximum_content_length = 2 * 5000
+    
     try:
         if log_path and os.path.exists(log_path):
             with open(log_path, "r", encoding="utf-8", errors="ignore") as log_file:
@@ -209,7 +210,7 @@ def run_container(
         image=image,
         name=f"{G.NAME}-{image.replace('/', '-').replace(':', '-')}-{int(time.time())}"[:50],
         detach=True,
-        remove=True,
+        auto_remove=True,
         mem_limit=memory_limit,
         cpu_quota=100000,
         cpu_period=100000,
@@ -228,10 +229,12 @@ def run_container(
             for volume_mapping in volume_mappings
         },
     )
-
-    # log_stream = container.logs(stream=True, follow=True)
-    # for line in log_stream:
-    #     G.WORKER_LOGGER.info(f">> {container.name}: {line.decode('utf-8', errors='replace').rstrip()}")
     
-    container.wait(timeout=timeout)
-        
+    try:
+        container.wait(timeout=timeout)
+    except requests.exceptions.ReadTimeout:
+        try:
+            container.kill() # type: ignore
+        except Exception:
+            pass
+    

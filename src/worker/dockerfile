@@ -20,7 +20,7 @@ COPY common/*.py ./common/
 
 
 # installing dependencies
-RUN apk add --no-cache python3 py3-pip py3-requests py3-pydantic py3-docker-py py3-natsort
+RUN apk add --no-cache python3 py3-pip py3-requests py3-pydantic py3-docker-py py3-natsort tzdata
 RUN pip install --break-system-packages ansi2html
 
 
@@ -29,6 +29,9 @@ RUN addgroup -S stos
 RUN adduser -S stos -G stos
 USER stos:stos
 
+# setting up environment variables
+ENV TZ=Europe/Warsaw
+ENV PYTHONUNBUFFERED=1
 
 # setting up entrypoint
-ENTRYPOINT ["python3", "-u" , "worker.py"]
+ENTRYPOINT ["python3", "worker.py"]

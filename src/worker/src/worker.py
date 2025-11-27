@@ -260,7 +260,7 @@ def process_submission_workflow(submission: SubmissionSchema) -> Optional[Submis
     return result
 
 
-def get_and_handle_submission() -> bool:
+def try_get_and_handle_submission() -> bool:
     submission_local_path: str = os.path.join(G.DATA_LOCAL_PATH, "src")
     logs_local_path: str = os.path.join(G.DATA_LOCAL_PATH, "logs")
 
@@ -305,6 +305,20 @@ def get_and_handle_submission() -> bool:
         result.debug = utils.fetch_debug_logs(os.path.join(logs_local_path, "worker.log"))
     except Exception:
         G.WORKER_LOGGER.warning("Fetching debug logs failed.")
+
+    try:
+        compilation_log = utils.fetch_debug_logs(os.path.join(logs_local_path, "compilation.log"))
+        if compilation_log:
+            G.WORKER_LOGGER.info(f"\n= Compilation Log Start ===================\n{compilation_log}\n======================================")
+    except Exception:
+        pass
+
+    try:
+        execution_log = utils.fetch_debug_logs(os.path.join(logs_local_path, "execution.log"))
+        if execution_log:
+            G.WORKER_LOGGER.info(f"\n= Execution Log Start =====================\n{execution_log}\n======================================")
+    except Exception:
+        pass
     
     # * ----------------------------------
     # * 5. Report result
@@ -336,28 +350,12 @@ def get_and_handle_submission() -> bool:
     return True
 
 
-def mainloop() -> None:
-    """Main loop that continuously processes submissions.
-
-    Sets up signal handlers and runs the submission processing workflow
-    in an infinite loop with configurable polling interval.
-
-    Returns:
-        None
-    """
-    backoff = G.POOLING_INTERVAL
-    while True:
-        try:
-            if get_and_handle_submission():
-                backoff = G.POOLING_INTERVAL  # reset backoff after successful processing
-            else:
-                time.sleep(backoff)
-                backoff = min(backoff * 2, G.POOLING_INTERVAL_MAX)
-
-        except Exception as e:  # process_submission_workflow unexpected error
-            G.WORKER_LOGGER.error(f"Error in mainloop: {e}")
-            time.sleep(backoff)
-            backoff = min(backoff * 2, G.POOLING_INTERVAL_MAX)
+# * worker workflow schema:
+# 1. initialize worker files
+# 2. fetch submission from adapter
+# 3. process submission workflow (containers)
+# 4. report result to adapter
+# 5. archive worker files (if debug mode)
 
 
 def main() -> None:
@@ -368,10 +366,15 @@ def main() -> None:
     Returns:
         None
     """
-
     signal.signal(signal.SIGINT, lambda s, f: exit(0))
     signal.signal(signal.SIGTERM, lambda s, f: exit(0))
-    mainloop()
+    backoff = G.POOLING_INTERVAL
+    while True:
+        if try_get_and_handle_submission():
+            backoff = G.POOLING_INTERVAL  # reset backoff after successful processing
+        else:
+            time.sleep(backoff)
+            backoff = min(backoff * 1.5, G.POOLING_INTERVAL_MAX)
 
 
 if __name__ == "__main__":
