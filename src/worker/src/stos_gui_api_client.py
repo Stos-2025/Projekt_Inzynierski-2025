@@ -192,6 +192,7 @@ def get_submission(
         else:
             response.raise_for_status()
 
+
         # validate headers
         xparam = response.headers.get("X-Param")
         submission_id = response.headers.get("X-Server-Id")

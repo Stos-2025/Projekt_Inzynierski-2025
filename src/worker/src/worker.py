@@ -152,6 +152,7 @@ def process_submission_workflow(submission: SubmissionSchema) -> Optional[Submis
         workflow_logger.error(f"Error while running compiler container: {e}")
         return None
 
+ 
     # * ----------------------------------
     # * 6. Run execution subcontainer
     # * ----------------------------------
@@ -162,12 +163,12 @@ def process_submission_workflow(submission: SubmissionSchema) -> Optional[Submis
             client=G.CLIENT,
             image=G.EXEC_IMAGE,
             environment={
-                "LOGS": "off",
                 "IN": "/data/in",
                 "OUT": "/data/out",
                 "STD": "/data/std",
                 "BIN": "/data/bin",
                 "CONF": "/data/conf",
+                "LOG": "/data/logs/execution.log",
             },
             volume_mappings=[
                 VolumeMappingSchema(host_path=problem_host_path, container_path="/data/in"),
@@ -184,6 +185,11 @@ def process_submission_workflow(submission: SubmissionSchema) -> Optional[Submis
                 VolumeMappingSchema(
                     host_path=artifacts_out_host_path,
                     container_path="/data/out",
+                    read_only=False,
+                ),
+                VolumeMappingSchema(
+                    host_path=logs_host_path,
+                    container_path="/data/logs",
                     read_only=False,
                 ),
             ],
@@ -208,6 +214,7 @@ def process_submission_workflow(submission: SubmissionSchema) -> Optional[Submis
                 "IN": "/data/in",
                 "OUT": "/data/out",
                 "ANS": "/data/ans",
+                "LOG": "/data/logs/judge.log",
                 "CONF": "/data/conf",
             },
             volume_mappings=[
@@ -217,6 +224,11 @@ def process_submission_workflow(submission: SubmissionSchema) -> Optional[Submis
                 VolumeMappingSchema(
                     host_path=artifacts_out_host_path,
                     container_path="/data/out",
+                    read_only=False,
+                ),
+                VolumeMappingSchema(
+                    host_path=logs_host_path,
+                    container_path="/data/logs",
                     read_only=False,
                 ),
             ],

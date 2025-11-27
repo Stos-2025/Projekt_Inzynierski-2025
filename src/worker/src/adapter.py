@@ -48,7 +48,7 @@ def fetch_submission(destination_directory: str) -> Optional[SubmissionSchema]:
         ValueError: If the destination directory path is invalid.
     """
     submission_workspace = f"/tmp/submission"
-    submission_temp_zip_path = os.path.join(submission_workspace, "src.zip")
+    submission_tmp_zip_path = os.path.join(submission_workspace, "src.zip")
 
     # validate destination path
     if not common.utils.is_valid_destination_directory_path(destination_directory):
@@ -65,7 +65,7 @@ def fetch_submission(destination_directory: str) -> Optional[SubmissionSchema]:
         response = None
         try:
             response = gui_client.get_submission(
-                queue_name, submission_temp_zip_path, GUI_URL, TIMEOUT
+                queue_name, submission_tmp_zip_path, GUI_URL, TIMEOUT
             )
         except Exception as e:
             G.WORKER_LOGGER.error(
@@ -85,7 +85,7 @@ def fetch_submission(destination_directory: str) -> Optional[SubmissionSchema]:
         )
 
         # extracting submission files
-        with zipfile.ZipFile(submission_temp_zip_path, "r") as zf:
+        with zipfile.ZipFile(submission_tmp_zip_path, "r") as zf:
             file_list = zf.infolist()
             if file_list:
                 submission.mainfile = file_list[0].filename
