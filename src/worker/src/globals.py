@@ -3,7 +3,7 @@ import json
 import docker
 from logging import Logger
 from logger import get_logger
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 from common.tuples import Timeout
 
 # the order of definitions matters here because of dependencies
@@ -61,11 +61,25 @@ DATA_HOST_PATH  = os.path.join(require_env("WORKERS_DATA_HOST_PATH"), NAME)
 
 # --- Images -------------------------------------------------------------------
 
-EXEC_IMAGE: str = require_env("EXEC_IMAGE_NAME")
-JUDGE_IMAGE: str = require_env("JUDGE_IMAGE_NAME")
-QUEUE_COMPILER_DICT: Dict[str, str] = json.loads(
-    os.environ["QUEUE_COMPILER_DICT"].replace("'", '"')
-)  # todo validate
+
+DEFAULT_EXEC_IMAGE: str = require_env("DEFAULT_EXEC_IMAGE")
+DEFAULT_JUDGE_IMAGE: str = require_env("DEFAULT_JUDGE_IMAGE")
+DEFAULT_COMPILER_IMAGE: str = require_env("DEFAULT_COMPILER_IMAGE")
+
+
+USED_QUEUES: List[str] = json.loads(
+    require_env("USED_QUEUES").replace("'", '"')
+) 
+
+QUEUE_EXEC_MAP: Dict[str, str] = json.loads(
+    require_env("QUEUE_EXEC_MAP").replace("'", '"')
+)  
+QUEUE_JUDGE_MAP: Dict[str, str] = json.loads(
+    require_env("QUEUE_JUDGE_MAP").replace("'", '"')
+)
+QUEUE_COMPILER_MAP: Dict[str, str] = json.loads(
+    require_env("QUEUE_COMPILER_MAP").replace("'", '"')
+)
 
 # --- Logger -------------------------------------------------------------------
 

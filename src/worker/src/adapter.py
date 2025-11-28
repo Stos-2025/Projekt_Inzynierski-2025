@@ -13,7 +13,7 @@ import shutil
 import zipfile
 import common.utils
 import globals as G
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 import script_parser as script_parser
 import stos_gui_api_client as gui_client
 import result_formatter as result_formatter
@@ -27,7 +27,9 @@ from common.schemas import (
 
 TIMEOUT = G.FETCH_TIMEOUT # FETCH_TIMEOUT
 GUI_URL = G.GUI_URL
-QUEUE_COMPILER_DICT: Dict[str, str] = G.QUEUE_COMPILER_DICT
+USED_QUEUES: List[str] = G.USED_QUEUES
+DEFAULT_COMPILER_IMAGE: str = G.DEFAULT_COMPILER_IMAGE
+QUEUE_COMPILER_MAP: Dict[str, str] = G.QUEUE_COMPILER_MAP
 
 
 def fetch_submission(destination_directory: str) -> Optional[SubmissionSchema]:
@@ -54,7 +56,7 @@ def fetch_submission(destination_directory: str) -> Optional[SubmissionSchema]:
     if not common.utils.is_valid_destination_directory_path(destination_directory):
         raise ValueError(f"Invalid destination path: {destination_directory}")
 
-    for queue_name in QUEUE_COMPILER_DICT.keys():
+    for queue_name in USED_QUEUES:
         # initializing workspace
         os.umask(0)
         if os.path.exists(submission_workspace):
@@ -78,7 +80,7 @@ def fetch_submission(destination_directory: str) -> Optional[SubmissionSchema]:
         # preparing submission schema
         submission = SubmissionSchema(
             id=response.submission_id,
-            comp_image=QUEUE_COMPILER_DICT[queue_name],
+            comp_image=QUEUE_COMPILER_MAP.get(queue_name) or G.DEFAULT_COMPILER_IMAGE,
             mainfile=None,
             submitted_by=response.student_id,
             problem_specification=ProblemSpecificationSchema(id=response.problem_id),

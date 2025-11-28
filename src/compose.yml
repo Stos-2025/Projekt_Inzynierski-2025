@@ -11,13 +11,18 @@ services:
     environment:
       - WORKERS_DATA_LOCAL_PATH=/workers
       - WORKERS_DATA_HOST_PATH=${STOS_FILES}
-      - EXEC_IMAGE_NAME=${EXEC_IMAGE_NAME}
-      - JUDGE_IMAGE_NAME=${JUDGE_IMAGE_NAME}
       
       - GUI_URL=${GUI_URL}
       - LOKI_URL=${LOKI_URL}
 
-      - QUEUE_COMPILER_DICT=${QUEUE_COMPILER_DICT}
+      - USED_QUEUES=${USED_QUEUES}
+      - DEFAULT_EXEC_IMAGE=${DEFAULT_EXEC_IMAGE}
+      - DEFAULT_JUDGE_IMAGE=${DEFAULT_JUDGE_IMAGE}
+      - DEFAULT_COMPILER_IMAGE=${DEFAULT_COMPILER_IMAGE}
+      - QUEUE_EXEC_MAP=${QUEUE_EXEC_MAP}
+      - QUEUE_JUDGE_MAP=${QUEUE_JUDGE_MAP}
+      - QUEUE_COMPILER_MAP=${QUEUE_COMPILER_MAP}
+
       - STOS_GID=${STOS_GID}
       - IS_DEBUG_MODE_ENABLED=${IS_DEBUG_MODE_ENABLED}
     group_add:  
@@ -39,27 +44,27 @@ services:
 
 
 
-  # --- NODE EXPORTER (monitoring hosta) ---
-  node_exporter:
-    image: prom/node-exporter:latest
-    container_name: node_exporter
-    ports:
-      - "9100:9100"
-    pid: host
-    restart: unless-stopped
+  # # --- NODE EXPORTER (monitoring hosta) ---
+  # node_exporter:
+  #   image: prom/node-exporter:latest
+  #   container_name: node_exporter
+  #   ports:
+  #     - "9100:9100"
+  #   pid: host
+  #   restart: unless-stopped
 
 
-  # --- cADVISOR (monitoring kontenerów) ---
-  cadvisor:
-    image: gcr.io/cadvisor/cadvisor:latest
-    container_name: cadvisor
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:rw
-      - /sys:/sys:ro
-      - /var/lib/docker/:/var/lib/docker:ro
+  # # --- cADVISOR (monitoring kontenerów) ---
+  # cadvisor:
+  #   image: gcr.io/cadvisor/cadvisor:latest
+  #   container_name: cadvisor
+  #   volumes:
+  #     - /:/rootfs:ro
+  #     - /var/run:/var/run:rw
+  #     - /sys:/sys:ro
+  #     - /var/lib/docker/:/var/lib/docker:ro
       
-    ports:
-      - "8080:8080"
-    restart: unless-stopped
+  #   ports:
+  #     - "8080:8080"
+  #   restart: unless-stopped
 

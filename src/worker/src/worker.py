@@ -161,7 +161,7 @@ def process_submission_workflow(submission: SubmissionSchema) -> Optional[Submis
     try:
         utils.run_container(
             client=G.CLIENT,
-            image=G.EXEC_IMAGE,
+            image=G.DEFAULT_EXEC_IMAGE,
             environment={
                 "IN": "/data/in",
                 "OUT": "/data/out",
@@ -208,7 +208,7 @@ def process_submission_workflow(submission: SubmissionSchema) -> Optional[Submis
     try:
         utils.run_container(
             client=G.CLIENT,
-            image=G.JUDGE_IMAGE,
+            image=G.DEFAULT_JUDGE_IMAGE,
             environment={
                 "LOGS": "off",
                 "IN": "/data/in",
@@ -309,14 +309,14 @@ def try_get_and_handle_submission() -> bool:
     try:
         compilation_log = utils.fetch_debug_logs(os.path.join(logs_local_path, "compilation.log"))
         if compilation_log:
-            G.WORKER_LOGGER.info(f"\n= Compilation Log Start ===================\n{compilation_log}\n======================================")
+            G.WORKER_LOGGER.info(f"Compilation Log Start: \n{compilation_log}\n")
     except Exception:
         pass
 
     try:
         execution_log = utils.fetch_debug_logs(os.path.join(logs_local_path, "execution.log"))
         if execution_log:
-            G.WORKER_LOGGER.info(f"\n= Execution Log Start =====================\n{execution_log}\n======================================")
+            G.WORKER_LOGGER.info(f"Execution Log Start: \n{execution_log}\n")
     except Exception:
         pass
     
