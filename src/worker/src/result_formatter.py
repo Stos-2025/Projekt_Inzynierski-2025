@@ -110,10 +110,11 @@ def get_info_formatted(result: SubmissionResultSchema) -> str:
     .ts {{
         background-color: #d8d8d8;
         border: 1px solid {border_color};
+        filter: brightness(100%) !important;
     }} 
     tr:hover td {{
     }}
-    tbody tr:nth-child(even) {{ filter: brightness(90%); }}
+    tbody tr:nth-child(odd) {{ filter: brightness(90%); }}
     .success {{ background-color: rgb(109, 156, 109); }}
     .failure {{ background-color: rgb(164, 84, 88); }}
     .eerror {{ background-color: rgb(207, 140, 75); }}
@@ -129,7 +130,7 @@ def get_info_formatted(result: SubmissionResultSchema) -> str:
         info_content += f"""
 <div class="wrapper">
     <table>
-        <tr>
+        <tr class="ts">
             <th class="tname"></th>
             <th class="tscore"></th>
             <th class="ttime"></th>
