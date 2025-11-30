@@ -78,8 +78,17 @@ def get_info_formatted(result: SubmissionResultSchema) -> str:
         return f"<tr class='{css_class}'><td>{name}</td><td>{score}</td><td>{test.time:.2f}</td><td>{test.memory/1024:.0f}</td><td>{test.ret_code}</td><td>{info}</td></tr>"
 
     score = get_result_score(result)
-    total_time= sum(test.time for test in result.test_results if test.time is not None)
-    max_memory= max(test.memory for test in result.test_results if test.memory is not None)
+    
+    total_time=0
+    time_usage_limit = [test.time for test in result.test_results if test.time is not None]
+    if any(time_usage_limit):
+        total_time= sum(time_usage_limit)
+    
+    max_memory=0
+    memory_usage_list = [test.memory for test in result.test_results if test.memory is not None]
+    if any(memory_usage_list):    
+        max_memory= max(memory_usage_list)
+        
     border_color = "#202020"
     border_radius = "4px"
     max_width = "250px"
