@@ -204,15 +204,16 @@ def parse_script(script: str, problem_id: str) -> Optional[ProblemSpecificationS
     try:
         result, _ = extract_raw_problem_script(script)  # type: ignore
         tests: List[TestSpecificationSchema] = []
-        for key, value in result.items():
+        for test_id, test_config in result.items():
             test = TestSpecificationSchema(
-                test_name=str(value.get("input")).replace(".in", ""),
-                time_limit=value.get("time"),  # type: ignore
-                total_memory_limit=(value.get("mem") or 256) * 1024,
+                test_id=str(test_id),
+                input_file=str(test_config.get("input"))
+                    .replace("%TESTID%", str(test_id)),
+                output_file=str(test_config.get("answer"))
+                    .replace("%TESTID%", str(test_id)),
+                time_limit=test_config.get("time"),  # type: ignore
+                total_memory_limit=(test_config.get("mem") or 256) * 1024,
             )
-            # tmp fix for test names
-            if(test.test_name == "%TESTID%"):
-                test.test_name = f"{key}"
             tests.append(test)
 
         problem_specification = ProblemSpecificationSchema(id=problem_id, tests=tests)

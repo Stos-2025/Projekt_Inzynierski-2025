@@ -123,8 +123,9 @@ def process_submission_workflow(submission: SubmissionSchema) -> Optional[Submis
 
                 "OUT": "/data/out/comp.json",
                 "INF": "/data/out/info.txt",
-                "BIN": "/data/bin/program",
                 "LOG": "/data/logs/compilation.log",
+                "ART": "/data/bin/",
+                "BIN": "/data/bin/program",
             },
             volume_mappings=[
                 VolumeMappingSchema(host_path=submission_host_path, container_path="/data/src"),

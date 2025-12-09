@@ -45,14 +45,15 @@ except Exception as e:
 
 # --- Environment --------------------------------------------------------------
 
-HOSTNAME: str = require_env("HOSTNAME")
+CONTAINER_HOSTNAME: str = require_env("HOSTNAME")
+LOGGER_NODE_NAME: str = require_env("LOGGER_NODE_NAME")
 STOS_GID: Optional[str] = os.environ.get("STOS_GID")
 
 # Try to resolve container name, fallback to hostname
 try:
-    NAME: str = CLIENT.containers.get(HOSTNAME).name or HOSTNAME
+    NAME: str = CLIENT.containers.get(CONTAINER_HOSTNAME).name or CONTAINER_HOSTNAME
 except Exception:
-    NAME = HOSTNAME # type: ignore
+    NAME = CONTAINER_HOSTNAME # type: ignore
 
 # --- Volume paths -------------------------------------------------------------
 

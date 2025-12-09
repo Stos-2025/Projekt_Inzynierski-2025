@@ -98,7 +98,7 @@ def get_logger(func_name: str, log_file_path: Optional[str], std_enabled: bool) 
         loki_handler = LokiHandler(
             loki_url=G.LOKI_URL,
             labels={
-                "host": "172.20.3.171",
+                "host": G.LOGGER_NODE_NAME,
                 "worker": G.NAME,
                 "job": func_name,
             }
