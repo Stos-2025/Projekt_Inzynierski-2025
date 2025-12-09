@@ -23,8 +23,8 @@ LOKI_URL: Optional[str] = os.environ.get("LOKI_URL")
 
 # --- Limits -------------------------------------------------------------------
 
-POOLING_INTERVAL: float = 0.5
-POOLING_INTERVAL_MAX: float = 10
+POLLING_INTERVAL: float = 0.5
+POLLING_INTERVAL_MAX: float = 10
 CONTAINERS_TIMEOUT: int = 250
 CONTAINERS_FILE_SIZE_LIMIT: str = "5g"
 CONTAINERS_MEMORY_LIMIT: str = "512m"

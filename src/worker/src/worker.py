@@ -368,13 +368,13 @@ def main() -> None:
     """
     signal.signal(signal.SIGINT, lambda s, f: exit(0))
     signal.signal(signal.SIGTERM, lambda s, f: exit(0))
-    backoff = G.POOLING_INTERVAL
+    backoff = G.POLLING_INTERVAL
     while True:
         if try_get_and_handle_submission():
-            backoff = G.POOLING_INTERVAL  # reset backoff after successful processing
+            backoff = G.POLLING_INTERVAL  # reset backoff after successful processing
         else:
             time.sleep(backoff)
-            backoff = min(backoff * 1.5, G.POOLING_INTERVAL_MAX)
+            backoff = min(backoff * 1.5, G.POLLING_INTERVAL_MAX)
 
 
 if __name__ == "__main__":
