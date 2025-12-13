@@ -16,7 +16,6 @@ import requests
 from typing import Optional
 import worker_utils as utils
 from common.enums import Ansi
-from logger import get_logger
 import globals as G
 from common.schemas import SubmissionResultSchema, SubmissionSchema, VolumeMappingSchema
 
@@ -37,7 +36,6 @@ def process_submission_workflow(submission: SubmissionSchema) -> Optional[Submis
     problem_local_path: str = os.path.join(G.DATA_LOCAL_PATH, "tests")
     lib_local_path: str = os.path.join(G.DATA_LOCAL_PATH, "lib")
     conf_local_path: str = os.path.join(G.DATA_LOCAL_PATH, "conf")
-    logs_local_path: str = os.path.join(G.DATA_LOCAL_PATH, "logs")
 
     submission_host_path: str = os.path.join(G.DATA_HOST_PATH, "src")
     problem_host_path: str = os.path.join(G.DATA_HOST_PATH, "tests")
@@ -53,14 +51,9 @@ def process_submission_workflow(submission: SubmissionSchema) -> Optional[Submis
     # * 1. Initialize
     # * ----------------------------------
 
-    workflow_logger = get_logger(
-        "worker_submission_processing_workflow",
-        os.path.join(logs_local_path, "worker.log"),
-        True,
-    )
-    workflow_logger.info(f"{Ansi.BOLD.value}{G.NAME}{Ansi.RESET.value} is starting submission processing workflow.")
-    workflow_logger.info(f"Worker files initialized successfully.")
-    workflow_logger.info(
+    G.WORKER_LOGGER.info(f"{Ansi.BOLD.value}{G.NAME}{Ansi.RESET.value} is starting submission processing workflow.")
+    G.WORKER_LOGGER.info(f"Worker files initialized successfully.")
+    G.WORKER_LOGGER.info(
         f"Fetched submission {submission.id} for problem {submission.problem_specification.id} by {submission.submitted_by}"
     )
     adapter.try_change_status(submission.id, "processing submission")
@@ -76,9 +69,9 @@ def process_submission_workflow(submission: SubmissionSchema) -> Optional[Submis
             lib_local_path,
         )
         submission.problem_specification = problem
-        workflow_logger.info(f"Fetched problem {problem.id} for submission {submission.id}")
+        G.WORKER_LOGGER.info(f"Fetched problem {problem.id} for submission {submission.id}")
     except Exception as e:
-        workflow_logger.error(f"Error while fetching problem: {e}")
+        G.WORKER_LOGGER.error(f"Error while fetching problem: {e}")
         return None
 
     # * ----------------------------------
@@ -87,31 +80,31 @@ def process_submission_workflow(submission: SubmissionSchema) -> Optional[Submis
     adapter.try_change_status(submission.id, "saving problem specification")
     try:
         utils.save_problem_specification(submission.problem_specification, conf_local_path)
-        workflow_logger.info(
+        G.WORKER_LOGGER.info(
             f"Problem specification (script.txt) parsed and saved successfully: \n\n{submission.problem_specification}\n"
         )
     except Exception as e:
-        workflow_logger.error(f"Error while saving problem specification: {e}")
+        G.WORKER_LOGGER.error(f"Error while saving problem specification: {e}")
         # * continue processing even if saving problem specification fails
 
     # * ----------------------------------
     # * 4. Prepare subcontainer parameters
     # * ----------------------------------
     adapter.try_change_status(submission.id, "preparing compiler container")
-    workflow_logger.info(
+    G.WORKER_LOGGER.info(
         f"Running containers for submission {submission.id} with image {submission.comp_image} and mainfile {submission.mainfile}"
     )
     try:
         G.CLIENT.ping()  # type: ignore
     except Exception as e:
-        workflow_logger.error(f"Docker client is not available: {e}")
+        G.WORKER_LOGGER.error(f"Docker client is not available: {e}")
         return None
 
     # * ----------------------------------
     # * 5. Run compiler subcontainer
     # * ----------------------------------
     adapter.try_change_status(submission.id, "compiling")
-    workflow_logger.info(f"Running compiler container for submission {submission.id}")
+    G.WORKER_LOGGER.info(f"Running compiler container for submission {submission.id}")
     try:
         utils.run_container(
             client=G.CLIENT,
@@ -121,7 +114,7 @@ def process_submission_workflow(submission: SubmissionSchema) -> Optional[Submis
                 "LIB": "/data/lib",
                 "MAINFILE": submission.mainfile or "main.py",
 
-                "OUT": "/data/out/comp.json",
+                "RES": "/data/out/comp.json",
                 "INF": "/data/out/info.txt",
                 "LOG": "/data/logs/compilation.log",
                 "ART": "/data/bin/",
@@ -150,7 +143,7 @@ def process_submission_workflow(submission: SubmissionSchema) -> Optional[Submis
             timeout=G.CONTAINERS_TIMEOUT,
         )
     except Exception as e:
-        workflow_logger.error(f"Error while running compiler container: {e}")
+        G.WORKER_LOGGER.error(f"Error while running compiler container: {e}")
         return None
 
  
@@ -158,16 +151,17 @@ def process_submission_workflow(submission: SubmissionSchema) -> Optional[Submis
     # * 6. Run execution subcontainer
     # * ----------------------------------
     adapter.try_change_status(submission.id, "executing")
-    workflow_logger.info(f"Running execution container for submission {submission.id}")
+    G.WORKER_LOGGER.info(f"Running execution container for submission {submission.id}")
     try:
         utils.run_container(
             client=G.CLIENT,
             image=G.DEFAULT_EXEC_IMAGE,
             environment={
                 "IN": "/data/in",
-                "OUT": "/data/out",
-                "STD": "/data/std",
-                "BIN": "/data/bin",
+                "RES": "/data/out",
+                "OUT": "/data/std",
+                "ART": "/data/bin",
+                "BIN": "/data/bin/program",
                 "CONF": "/data/conf",
                 "LOG": "/data/logs/execution.log",
             },
@@ -198,14 +192,14 @@ def process_submission_workflow(submission: SubmissionSchema) -> Optional[Submis
             timeout=G.CONTAINERS_TIMEOUT,
         )
     except Exception as e:
-        workflow_logger.error(f"Error while running execution container: {e}")
+        G.WORKER_LOGGER.error(f"Error while running execution container: {e}")
         return None
 
     # * ----------------------------------
     # * 7. Run judge subcontainer
     # * ----------------------------------
     adapter.try_change_status(submission.id, "judging")
-    workflow_logger.info(f"Running judge container for submission {submission.id}")
+    G.WORKER_LOGGER.info(f"Running judge container for submission {submission.id}")
     try:
         utils.run_container(
             client=G.CLIENT,
@@ -215,8 +209,8 @@ def process_submission_workflow(submission: SubmissionSchema) -> Optional[Submis
                 "IN": "/data/in",
                 "OUT": "/data/out",
                 "ANS": "/data/ans",
-                "LOG": "/data/logs/judge.log",
                 "CONF": "/data/conf",
+                "LOG": "/data/logs/judge.log",
             },
             volume_mappings=[
                 VolumeMappingSchema(host_path=problem_host_path, container_path="/data/ans"),
@@ -237,24 +231,24 @@ def process_submission_workflow(submission: SubmissionSchema) -> Optional[Submis
             timeout=G.CONTAINERS_TIMEOUT,
         )
     except Exception as e:
-        workflow_logger.error(f"Error while running judge container: {e}")
+        G.WORKER_LOGGER.error(f"Error while running judge container: {e}")
         return None
 
     # * ----------------------------------
     # * 8. Fetch results
     # * ----------------------------------
     adapter.try_change_status(submission.id, "fetching results")
-    workflow_logger.info(f"Fetching results for submission {submission.id}")
+    G.WORKER_LOGGER.info(f"Fetching results for submission {submission.id}")
     
     try:
         result: SubmissionResultSchema = utils.get_results(os.path.join(G.DATA_LOCAL_PATH, "out"))
     except Exception as e:
-        workflow_logger.error(f"Error while getting results: {e}")
+        G.WORKER_LOGGER.error(f"Error while getting results: {e}")
         return None
 
-    workflow_logger.info(f"Containers finished for submission {submission.id}")
-    workflow_logger.info(f"Result for submission {submission.id}: \n\n{result}\n")
-    workflow_logger.info(
+    G.WORKER_LOGGER.info(f"Containers finished for submission {submission.id}")
+    G.WORKER_LOGGER.info(f"Result for submission {submission.id}: \n\n{result}\n")
+    G.WORKER_LOGGER.info(
         f"{Ansi.BOLD.value}{G.NAME}{Ansi.RESET.value} has finished processing submission {submission.id}."
     )
     adapter.try_change_status(submission.id, "reporting result")
@@ -302,24 +296,19 @@ def try_get_and_handle_submission() -> bool:
     # * 4. Fetch debug logs
     # * ----------------------------------
 
-    try:
-        result.debug = utils.fetch_debug_logs(os.path.join(logs_local_path, "worker.log"))
-    except Exception:
-        G.WORKER_LOGGER.warning("Fetching debug logs failed.")
+    # try:
+    #     compilation_log = utils.fetch_debug_logs(os.path.join(logs_local_path, "compilation.log"))
+    #     if compilation_log:
+    #         G.WORKER_LOGGER.info(f"Compilation Log Start: \n{compilation_log}\n")
+    # except Exception:
+    #     pass
 
-    try:
-        compilation_log = utils.fetch_debug_logs(os.path.join(logs_local_path, "compilation.log"))
-        if compilation_log:
-            G.WORKER_LOGGER.info(f"Compilation Log Start: \n{compilation_log}\n")
-    except Exception:
-        pass
-
-    try:
-        execution_log = utils.fetch_debug_logs(os.path.join(logs_local_path, "execution.log"))
-        if execution_log:
-            G.WORKER_LOGGER.info(f"Execution Log Start: \n{execution_log}\n")
-    except Exception:
-        pass
+    # try:
+    #     execution_log = utils.fetch_debug_logs(os.path.join(logs_local_path, "execution.log"))
+    #     if execution_log:
+    #         G.WORKER_LOGGER.info(f"Execution Log Start: \n{execution_log}\n")
+    # except Exception:
+    #     pass
     
     # * ----------------------------------
     # * 5. Report result
