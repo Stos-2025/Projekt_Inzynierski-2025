@@ -231,7 +231,8 @@ def run_container(
     )
     
     try:
-        container.wait(timeout=timeout)
+        result = container.wait(timeout=timeout)
+        G.WORKER_LOGGER.debug(f"Container {container.name} finished with result: {result}")
     except requests.exceptions.ReadTimeout:
         try:
             container.kill() # type: ignore

@@ -114,7 +114,7 @@ def process_submission_workflow(submission: SubmissionSchema) -> Optional[Submis
                 "LIB": "/data/lib",
                 "MAINFILE": submission.mainfile or "main.py",
 
-                "RES": "/data/out/comp.json",
+                "OUT": "/data/out/comp.json",
                 "INF": "/data/out/info.txt",
                 "LOG": "/data/logs/compilation.log",
                 "ART": "/data/bin/",
@@ -158,13 +158,14 @@ def process_submission_workflow(submission: SubmissionSchema) -> Optional[Submis
             image=G.DEFAULT_EXEC_IMAGE,
             environment={
                 "IN": "/data/in",
-                "RES": "/data/out",
-                "OUT": "/data/std",
+                "OUT": "/data/out",
+                "STD": "/data/std",
                 "ART": "/data/bin",
                 "BIN": "/data/bin/program",
                 "CONF": "/data/conf",
                 "LOG": "/data/logs/execution.log",
             },
+            
             volume_mappings=[
                 VolumeMappingSchema(host_path=problem_host_path, container_path="/data/in"),
                 VolumeMappingSchema(host_path=conf_host_path, container_path="/data/conf"),
@@ -257,7 +258,7 @@ def process_submission_workflow(submission: SubmissionSchema) -> Optional[Submis
 
 def try_get_and_handle_submission() -> bool:
     submission_local_path: str = os.path.join(G.DATA_LOCAL_PATH, "src")
-    logs_local_path: str = os.path.join(G.DATA_LOCAL_PATH, "logs")
+    # logs_local_path: str = os.path.join(G.DATA_LOCAL_PATH, "logs")
 
     # * ----------------------------------
     # * 1. Initialize worker files
