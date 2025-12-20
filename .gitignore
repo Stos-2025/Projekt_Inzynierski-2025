@@ -12,3 +12,5 @@ stos_files/
 **/test_files/*
 !**/test_files/.gitkeep
 .venv/
+.vscode/
+.idea/

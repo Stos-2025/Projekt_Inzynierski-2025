@@ -11,11 +11,19 @@ services:
     environment:
       - WORKERS_DATA_LOCAL_PATH=/workers
       - WORKERS_DATA_HOST_PATH=${STOS_FILES}
-      - EXEC_IMAGE_NAME=${EXEC_IMAGE_NAME}
-      - JUDGE_IMAGE_NAME=${JUDGE_IMAGE_NAME}
       
       - GUI_URL=${GUI_URL}
-      - QUEUE_COMPILER_DICT=${QUEUE_COMPILER_DICT}
+      - LOKI_URL=${LOKI_URL}
+
+      - USED_QUEUES=${USED_QUEUES}
+      - DEFAULT_EXEC_IMAGE=${DEFAULT_EXEC_IMAGE}
+      - DEFAULT_JUDGE_IMAGE=${DEFAULT_JUDGE_IMAGE}
+      - DEFAULT_COMPILER_IMAGE=${DEFAULT_COMPILER_IMAGE}
+      - QUEUE_EXEC_MAP=${QUEUE_EXEC_MAP}
+      - QUEUE_JUDGE_MAP=${QUEUE_JUDGE_MAP}
+      - QUEUE_COMPILER_MAP=${QUEUE_COMPILER_MAP}
+      - LOGGER_NODE_NAME=${LOGGER_NODE_NAME}
+
       - STOS_GID=${STOS_GID}
       - IS_DEBUG_MODE_ENABLED=${IS_DEBUG_MODE_ENABLED}
     group_add:  
@@ -36,17 +44,6 @@ services:
 
 
 
-  # # --- PROMETHEUS ---
-  # prometheus:
-  #   image: prom/prometheus:latest
-  #   container_name: prometheus
-  #   volumes:
-  #     - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
-  #   command:
-  #     - '--config.file=/etc/prometheus/prometheus.yml'
-  #   ports:
-  #     - "9090:9090"
-  #   restart: unless-stopped
 
   # # --- NODE EXPORTER (monitoring hosta) ---
   # node_exporter:
@@ -54,6 +51,7 @@ services:
   #   container_name: node_exporter
   #   ports:
   #     - "9100:9100"
+  #   pid: host
   #   restart: unless-stopped
 
 
@@ -61,26 +59,13 @@ services:
   # cadvisor:
   #   image: gcr.io/cadvisor/cadvisor:latest
   #   container_name: cadvisor
-  #   privileged: true
   #   volumes:
   #     - /:/rootfs:ro
-  #     - /var/run:/var/run:ro
+  #     - /var/run:/var/run:rw
   #     - /sys:/sys:ro
   #     - /var/lib/docker/:/var/lib/docker:ro
+      
   #   ports:
   #     - "8080:8080"
   #   restart: unless-stopped
 
-
-  # # --- GRAFANA ---
-  # grafana:
-  #   image: grafana/grafana:latest
-  #   container_name: grafana
-  #   ports:
-  #     - "3000:3000"
-  #   environment:
-  #     - GF_SECURITY_ADMIN_USER=admin
-  #     - GF_SECURITY_ADMIN_PASSWORD=admin
-  #   depends_on:
-  #     - prometheus
-  #   restart: unless-stopped

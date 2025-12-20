@@ -9,15 +9,15 @@ and data transformation between API responses and internal schemas.
 """
 
 import os
-import json
 import shutil
 import zipfile
 import common.utils
-from typing import Dict, Optional
+import globals as G
+from typing import Dict, List, Optional
 import script_parser as script_parser
 import stos_gui_api_client as gui_client
 import result_formatter as result_formatter
-from common.tuples import Timeout, StosGuiResultSchema
+from common.tuples import StosGuiResultSchema
 from common.schemas import (
     ProblemSpecificationSchema,
     SubmissionSchema,
@@ -25,11 +25,11 @@ from common.schemas import (
 )
 
 
-TIMEOUT = Timeout(5, 10)  # FETCH_TIMEOUT
-GUI_URL = os.environ["GUI_URL"]
-QUEUE_COMPILER_DICT: Dict[str, str] = json.loads(
-    os.environ["QUEUE_COMPILER_DICT"]
-)  # todo validate
+TIMEOUT = G.FETCH_TIMEOUT # FETCH_TIMEOUT
+GUI_URL = G.GUI_URL
+USED_QUEUES: List[str] = G.USED_QUEUES
+DEFAULT_COMPILER_IMAGE: str = G.DEFAULT_COMPILER_IMAGE
+QUEUE_COMPILER_MAP: Dict[str, str] = G.QUEUE_COMPILER_MAP
 
 
 def fetch_submission(destination_directory: str) -> Optional[SubmissionSchema]:
@@ -50,13 +50,13 @@ def fetch_submission(destination_directory: str) -> Optional[SubmissionSchema]:
         ValueError: If the destination directory path is invalid.
     """
     submission_workspace = f"/tmp/submission"
-    submission_temp_zip_path = os.path.join(submission_workspace, "src.zip")
+    submission_tmp_zip_path = os.path.join(submission_workspace, "src.zip")
 
     # validate destination path
     if not common.utils.is_valid_destination_directory_path(destination_directory):
         raise ValueError(f"Invalid destination path: {destination_directory}")
 
-    for queue_name in QUEUE_COMPILER_DICT.keys():
+    for queue_name in USED_QUEUES:
         # initializing workspace
         os.umask(0)
         if os.path.exists(submission_workspace):
@@ -67,10 +67,10 @@ def fetch_submission(destination_directory: str) -> Optional[SubmissionSchema]:
         response = None
         try:
             response = gui_client.get_submission(
-                queue_name, submission_temp_zip_path, GUI_URL, TIMEOUT
+                queue_name, submission_tmp_zip_path, GUI_URL, TIMEOUT
             )
         except Exception as e:
-            print(
+            G.WORKER_LOGGER.error(
                 f"An error occurred while fetching the submission from {queue_name}: {e} continuing to next queue..."
             )
             continue
@@ -80,14 +80,14 @@ def fetch_submission(destination_directory: str) -> Optional[SubmissionSchema]:
         # preparing submission schema
         submission = SubmissionSchema(
             id=response.submission_id,
-            comp_image=QUEUE_COMPILER_DICT[queue_name],
+            comp_image=QUEUE_COMPILER_MAP.get(queue_name) or G.DEFAULT_COMPILER_IMAGE,
             mainfile=None,
             submitted_by=response.student_id,
             problem_specification=ProblemSpecificationSchema(id=response.problem_id),
         )
 
         # extracting submission files
-        with zipfile.ZipFile(submission_temp_zip_path, "r") as zf:
+        with zipfile.ZipFile(submission_tmp_zip_path, "r") as zf:
             file_list = zf.infolist()
             if file_list:
                 submission.mainfile = file_list[0].filename
@@ -96,6 +96,22 @@ def fetch_submission(destination_directory: str) -> Optional[SubmissionSchema]:
 
     return None
 
+def try_mark_as_completed(submission_id: str) -> None:
+    """Mark a submission as completed in the STOS GUI API.
+
+    Notifies the STOS GUI API that the specified submission has been
+    fully processed and its result has been reported.
+
+    Args:
+        submission_id (str): Unique identifier of the submission.
+    
+    Returns:
+        None
+    """
+    try:
+        gui_client.mark_as_completed(submission_id, GUI_URL, TIMEOUT)
+    except Exception:
+        pass
 
 def report_result(submission_id: str, result: SubmissionResultSchema) -> None:
     """Report submission evaluation result to the STOS GUI API.
@@ -118,13 +134,23 @@ def report_result(submission_id: str, result: SubmissionResultSchema) -> None:
     gui_client.post_result(submission_id, guiResult, GUI_URL, TIMEOUT)
 
 
-def change_status(submission_id: str, new_status: str) -> None:
+def try_change_status(submission_id: str, new_status: str) -> None:
+    """Change the status of a submission in the STOS GUI API.
+
+    Updates the status of a submission in the STOS GUI API to reflect
+    its current processing state.
+
+    Args:
+        submission_id (str): Unique identifier of the submission.
+        new_status (str): New status to set for the submission.
+
+    Returns:
+        None
+    """
     try:
         gui_client.notify(submission_id, new_status, GUI_URL, TIMEOUT)
-    except Exception as e:
-        print(
-            f"An error occurred while changing status to {new_status} for submission {submission_id}: {e}"
-        )
+    except Exception:
+        pass
 
 
 def fetch_problem(
@@ -159,15 +185,7 @@ def fetch_problem(
     # fetching problem files
     file_list = gui_client.get_problems_files_list(problem_id, GUI_URL, TIMEOUT)
     for file_name in file_list:
-        if file_name.endswith(".in"):
-            gui_client.get_file(
-                file_name,
-                problem_id,
-                os.path.join(destination_directory, file_name),
-                GUI_URL,
-                TIMEOUT,
-            )
-        elif file_name.endswith(".out"):
+        if file_name.endswith(".in") or file_name.endswith(".out"):
             gui_client.get_file(
                 file_name,
                 problem_id,
@@ -177,9 +195,16 @@ def fetch_problem(
             )
         elif file_name == "script.txt":
             gui_client.get_file(
+                file_name,
+                problem_id,
+                os.path.join(destination_directory, file_name),
+                GUI_URL,
+                TIMEOUT,
+            )
+            gui_client.get_file(
                 file_name, problem_id, tmp_script_path, GUI_URL, TIMEOUT
             )
-        elif lib_destination_directory:
+        elif lib_destination_directory is not None:
             gui_client.get_file(
                 file_name,
                 problem_id,

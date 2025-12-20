@@ -99,10 +99,12 @@ class TestSpecificationSchema(BaseModel):
         total_memory_limit: Maximum memory usage in bytes (default: 256 MB)
         stack_size_limit: Maximum stack size in bytes (optional)
     """
-    test_name: str = ""
+    test_id: str = ""
+    input_file: Optional[str] = None
+    output_file: Optional[str] = None
     time_limit: float = 2
     total_memory_limit: int = 256*1024*1024  # 256 MB
-    stack_size_limit: Optional[int] = None
+    stack_size_limit: Optional[int] = None # unused currently
 
 
 
@@ -136,10 +138,10 @@ class ProblemSpecificationSchema(BaseModel):
             ret += f"+------+-------------------+\n"
             ret += f"|      |{'limits'.center(19)}|\n"
             ret += f"+------+------+------------+\n"
-            ret += f"| name | time |   memory   |\n"
+            ret += f"|  id  | time |   memory   |\n"
             ret += f"+------+------+------------+\n"
             for test in self.tests:
-                ret += f"| {test.test_name:>4} | "
+                ret += f"| {test.test_id:>4} | "
                 ret += f"{test.time_limit:.2f} | {size_to_string(test.total_memory_limit):>10} |\n"
             ret += f"+------+------+------------+"
         return ret
@@ -227,12 +229,16 @@ class VolumeMappingSchema(BaseModel):
         }
 
 
+class CompilerOutputSchema(BaseModel):
+    success: bool = False
+    return_code: Optional[int] = None
+    compilation_time_ms: Optional[int] = None
+
 class ExecOutputSchema(BaseModel):
     return_code: int
     signal: Optional[int] = None
     user_time: Optional[float] = None
     total_memory: Optional[int] = None
-
 
 class JudgeOutputSchema(BaseModel):
     grade: bool = False
